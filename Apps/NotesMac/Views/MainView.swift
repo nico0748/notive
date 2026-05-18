@@ -15,7 +15,10 @@ struct MainView: View {
             noteService: appModel.noteService,
             searchService: appModel.searchService
         ))
-        _editor = State(initialValue: EditorViewModel(noteService: appModel.noteService))
+        _editor = State(initialValue: EditorViewModel(
+            noteService: appModel.noteService,
+            tagService: appModel.tagService
+        ))
     }
 
     var body: some View {

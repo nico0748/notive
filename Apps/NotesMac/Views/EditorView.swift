@@ -1,9 +1,12 @@
 import NotesCore
 import SwiftUI
 
-/// 右ペインのノートエディタ（F-EDIT-01〜07）。
+/// 右ペインのノートエディタ（F-EDIT-01〜07、F-ORG-03 タグ付与）。
 struct EditorView: View {
     @Bindable var editor: EditorViewModel
+
+    @State private var isCreatingTag = false
+    @State private var newTagName = ""
 
     var body: some View {
         Group {
@@ -18,6 +21,15 @@ struct EditorView: View {
             }
         }
         .toolbar { toolbarContent }
+        .alert("新しいタグ", isPresented: $isCreatingTag) {
+            TextField("タグ名", text: $newTagName)
+            Button("作成") {
+                let name = newTagName
+                newTagName = ""
+                Task { await editor.createAndAssignTag(named: name) }
+            }
+            Button("キャンセル", role: .cancel) { newTagName = "" }
+        }
     }
 
     private var editorBody: some View {
@@ -29,6 +41,9 @@ struct EditorView: View {
                 .padding(.top)
                 .onChange(of: editor.title) { _, _ in editor.scheduleAutosave() }
 
+            tagBar
+                .padding(.top, 6)
+
             Divider().padding(.vertical, 8)
 
             if editor.isMarkdownMode {
@@ -37,6 +52,41 @@ struct EditorView: View {
                 BlockListView(editor: editor)
             }
         }
+    }
+
+    /// タグの表示・付与・解除を行うバー（F-ORG-03）。
+    private var tagBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(editor.assignedTags) { tag in
+                    TagChip(tag: tag) { editor.toggleTag(tag.id) }
+                }
+                tagMenu
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    private var tagMenu: some View {
+        Menu {
+            ForEach(editor.unassignedTags) { tag in
+                Button {
+                    editor.toggleTag(tag.id)
+                } label: {
+                    Label(tag.name, systemImage: "tag")
+                }
+            }
+            if !editor.unassignedTags.isEmpty {
+                Divider()
+            }
+            Button("新しいタグを作成…") { isCreatingTag = true }
+        } label: {
+            Label("タグを追加", systemImage: "tag")
+                .font(.caption)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
     }
 
     private var markdownEditor: some View {
@@ -86,5 +136,30 @@ struct EditorView: View {
         } label: {
             Label("ブロックを追加", systemImage: "plus")
         }
+    }
+}
+
+/// 付与済みタグを表すチップ。タップで解除する。
+private struct TagChip: View {
+    let tag: Tag
+    let onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(Color(hex: tag.colorHex))
+                .frame(width: 8, height: 8)
+            Text(tag.name)
+                .font(.caption)
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption2)
+            }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.tertiary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(Color(hex: tag.colorHex).opacity(0.15), in: Capsule())
     }
 }
