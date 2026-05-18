@@ -1,0 +1,50 @@
+# SwiftLint configuration for Notive
+included:
+  - Packages/NotesCore/Sources
+  - Packages/NotesCore/Tests
+  - Apps/NotesMac
+  - Apps/NotesPad
+
+excluded:
+  - "**/.build"
+  - "**/DerivedData"
+
+disabled_rules:
+  - todo                       # TODO/FIXME はイテレーション申し送りとして許容する
+  - trailing_comma
+  - function_parameter_count   # ドメイン値型のメンバーワイズ風 init を許容する
+
+line_length:
+  warning: 160
+  error: 220
+  ignores_comments: true
+  ignores_urls: true
+
+file_length:
+  warning: 600
+  error: 800
+
+type_body_length:
+  warning: 400
+  error: 600
+
+function_body_length:
+  warning: 100
+  error: 160
+
+cyclomatic_complexity:
+  warning: 18
+  error: 30
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    - id
+    - vm
+    - x
+    - y
+
+nesting:
+  type_level:
+    warning: 3

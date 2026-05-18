@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  notescore:
+    name: NotesCore (build & test)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Swift toolchain
+        run: swift --version
+
+      - name: Build & test NotesCore package
+        working-directory: Packages/NotesCore
+        run: swift test --enable-code-coverage
+
+  lint:
+    name: SwiftLint
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run SwiftLint (strict)
+        run: swiftlint lint --strict
+
+  app:
+    name: macOS app (build)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Build macOS app
+        run: |
+          xcodebuild build \
+            -project Notive.xcodeproj \
+            -scheme Notive-macOS \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO
