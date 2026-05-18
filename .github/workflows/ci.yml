@@ -17,7 +17,17 @@ jobs:
 
       - name: Build & test NotesCore package
         working-directory: Packages/NotesCore
-        run: swift test --enable-code-coverage
+        run: |
+          set -o pipefail
+          if ! swift test --enable-code-coverage 2>&1 | tee /tmp/notescore.log; then
+            {
+              echo '## NotesCore build/test output (tail)'
+              echo '```'
+              tail -n 200 /tmp/notescore.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
   lint:
     name: SwiftLint
@@ -41,12 +51,31 @@ jobs:
         run: brew install xcodegen
 
       - name: Generate project
-        run: xcodegen generate
+        run: |
+          set -o pipefail
+          if ! xcodegen generate 2>&1 | tee /tmp/xcodegen.log; then
+            {
+              echo '## xcodegen output'
+              echo '```'
+              cat /tmp/xcodegen.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Build macOS app
         run: |
-          xcodebuild build \
+          set -o pipefail
+          if ! xcodebuild build \
             -project Notive.xcodeproj \
             -scheme Notive-macOS \
             -destination 'platform=macOS' \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcodebuild.log; then
+            {
+              echo '## xcodebuild output (tail)'
+              echo '```'
+              tail -n 250 /tmp/xcodebuild.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
