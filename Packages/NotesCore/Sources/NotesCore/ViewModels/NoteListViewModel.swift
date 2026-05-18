@@ -48,14 +48,14 @@ public final class NoteListViewModel {
             if isSearching {
                 notes = try await searchService.search(query: searchText, in: workspaceID)
             } else {
-                notes = try await notes(for: selection, workspaceID: workspaceID)
+                notes = try await fetchNotes(for: selection, workspaceID: workspaceID)
             }
         } catch {
             errorMessage = "ノートの読み込みに失敗しました: \(error.localizedDescription)"
         }
     }
 
-    private func notes(for selection: SidebarSelection, workspaceID: UUID) async throws -> [Note] {
+    private func fetchNotes(for selection: SidebarSelection, workspaceID: UUID) async throws -> [Note] {
         let all = try await noteService.allNotes(in: workspaceID)
         switch selection {
         case .allNotes:

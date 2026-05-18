@@ -35,7 +35,7 @@ public final class SwiftDataUserRepository: UserRepository {
         try persist()
     }
 
-    private func fetch<T>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
+    private func fetch<T: PersistentModel>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
         do { return try context.fetch(descriptor) } catch {
             throw RepositoryError.storageFailure(error.localizedDescription)
         }
@@ -75,7 +75,7 @@ public final class SwiftDataWorkspaceRepository: WorkspaceRepository {
         try persist()
     }
 
-    private func fetch<T>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
+    private func fetch<T: PersistentModel>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
         do { return try context.fetch(descriptor) } catch {
             throw RepositoryError.storageFailure(error.localizedDescription)
         }
@@ -124,7 +124,7 @@ public final class SwiftDataFolderRepository: FolderRepository {
         try persist()
     }
 
-    private func fetch<T>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
+    private func fetch<T: PersistentModel>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
         do { return try context.fetch(descriptor) } catch {
             throw RepositoryError.storageFailure(error.localizedDescription)
         }
@@ -178,7 +178,7 @@ public final class SwiftDataNoteRepository: NoteRepository {
         try persist()
     }
 
-    private func fetch<T>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
+    private func fetch<T: PersistentModel>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
         do { return try context.fetch(descriptor) } catch {
             throw RepositoryError.storageFailure(error.localizedDescription)
         }
@@ -227,7 +227,7 @@ public final class SwiftDataTagRepository: TagRepository {
         try persist()
     }
 
-    private func fetch<T>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
+    private func fetch<T: PersistentModel>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
         do { return try context.fetch(descriptor) } catch {
             throw RepositoryError.storageFailure(error.localizedDescription)
         }

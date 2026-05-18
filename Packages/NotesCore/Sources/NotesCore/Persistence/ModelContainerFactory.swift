@@ -23,7 +23,7 @@ public enum ModelContainerFactory {
     public static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {
         let configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
         do {
-            return try ModelContainer(for: schema, configurations: [configuration])
+            return try ModelContainer(for: schema, configurations: configuration)
         } catch {
             throw RepositoryError.storageFailure("ModelContainer の生成に失敗: \(error.localizedDescription)")
         }
