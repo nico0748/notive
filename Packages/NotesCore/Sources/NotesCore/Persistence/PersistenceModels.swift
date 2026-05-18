@@ -11,7 +11,7 @@ import SwiftData
 
 @Model
 final class UserEntity {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var displayName: String
     var email: String?
     var isLocal: Bool
@@ -28,7 +28,7 @@ final class UserEntity {
 
 @Model
 final class WorkspaceEntity {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var name: String
     var kindRaw: String
     var ownerID: UUID
@@ -45,7 +45,7 @@ final class WorkspaceEntity {
 
 @Model
 final class FolderEntity {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var name: String
     var workspaceID: UUID
     var parentID: UUID?
@@ -64,7 +64,7 @@ final class FolderEntity {
 
 @Model
 final class NoteEntity {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var title: String
     /// `[Block]` を JSON エンコードしたデータ。
     var bodyData: Data
@@ -113,7 +113,7 @@ final class NoteEntity {
 
 @Model
 final class TagEntity {
-    @Attribute(.unique) var id: UUID
+    var id: UUID
     var name: String
     var colorHex: String
     var workspaceID: UUID
