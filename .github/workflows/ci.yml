@@ -5,6 +5,10 @@ on:
     branches: ["**"]
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   notescore:
     name: NotesCore (build & test)
@@ -17,15 +21,23 @@ jobs:
 
       - name: Build & test NotesCore package
         working-directory: Packages/NotesCore
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
         run: |
           set -o pipefail
           if ! swift test --enable-code-coverage 2>&1 | tee /tmp/notescore.log; then
-            {
-              echo '## NotesCore build/test output (tail)'
-              echo '```'
-              tail -n 200 /tmp/notescore.log
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$PR_NUMBER" ]; then
+              {
+                echo '<!-- ci-diagnostic -->'
+                echo '### CI diagnostic — NotesCore (build & test)'
+                echo '```'
+                tail -n 200 /tmp/notescore.log
+                echo '```'
+              } > /tmp/comment.md
+              gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/comment.md || true
+            fi
             exit 1
           fi
 
@@ -44,6 +56,10 @@ jobs:
   app:
     name: macOS app (build)
     runs-on: macos-14
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      REPO: ${{ github.repository }}
     steps:
       - uses: actions/checkout@v4
 
@@ -54,12 +70,16 @@ jobs:
         run: |
           set -o pipefail
           if ! xcodegen generate 2>&1 | tee /tmp/xcodegen.log; then
-            {
-              echo '## xcodegen output'
-              echo '```'
-              cat /tmp/xcodegen.log
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$PR_NUMBER" ]; then
+              {
+                echo '<!-- ci-diagnostic -->'
+                echo '### CI diagnostic — xcodegen generate'
+                echo '```'
+                cat /tmp/xcodegen.log
+                echo '```'
+              } > /tmp/comment.md
+              gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/comment.md || true
+            fi
             exit 1
           fi
 
@@ -71,11 +91,15 @@ jobs:
             -scheme Notive-macOS \
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO 2>&1 | tee /tmp/xcodebuild.log; then
-            {
-              echo '## xcodebuild output (tail)'
-              echo '```'
-              tail -n 250 /tmp/xcodebuild.log
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
+            if [ -n "$PR_NUMBER" ]; then
+              {
+                echo '<!-- ci-diagnostic -->'
+                echo '### CI diagnostic — xcodebuild (tail)'
+                echo '```'
+                grep -E 'error:|warning:|note:|Compiling|Linking|** BUILD' /tmp/xcodebuild.log | tail -n 120 || tail -n 120 /tmp/xcodebuild.log
+                echo '```'
+              } > /tmp/comment.md
+              gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/comment.md || true
+            fi
             exit 1
           fi
