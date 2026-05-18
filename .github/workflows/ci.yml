@@ -12,8 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_15.4.app
+      - name: Show Swift toolchain
+        run: swift --version
 
       - name: Build & test NotesCore package
         working-directory: Packages/NotesCore
@@ -36,9 +36,6 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-
-      - name: Select Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_15.4.app
 
       - name: Install XcodeGen
         run: brew install xcodegen

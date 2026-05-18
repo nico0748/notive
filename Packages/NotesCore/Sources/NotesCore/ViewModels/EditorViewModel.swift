@@ -143,12 +143,6 @@ public final class EditorViewModel {
         scheduleAutosave()
     }
 
-    /// ブロックを移動する（手動並び替え）。
-    public func moveBlocks(from offsets: IndexSet, to destination: Int) {
-        blocks.move(fromOffsets: offsets, toOffset: destination)
-        scheduleAutosave()
-    }
-
     /// 指定ブロックを更新後の内容で置き換える。
     public func updateBlock(_ block: Block) {
         guard let index = blocks.firstIndex(where: { $0.id == block.id }) else { return }
