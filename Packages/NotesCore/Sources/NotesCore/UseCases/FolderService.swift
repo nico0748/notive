@@ -1,7 +1,6 @@
 import Foundation
 
 /// フォルダの CRUD と階層操作を担うユースケース（F-ORG-02）。
-@MainActor
 public final class FolderService {
     private let folderRepository: FolderRepository
     private let noteRepository: NoteRepository

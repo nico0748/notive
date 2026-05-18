@@ -4,7 +4,6 @@ import Foundation
 ///
 /// `NoteRepository` プロトコルにのみ依存し、具体的な永続化技術（SwiftData）には
 /// 依存しない。
-@MainActor
 public final class NoteService {
     private let repository: NoteRepository
 

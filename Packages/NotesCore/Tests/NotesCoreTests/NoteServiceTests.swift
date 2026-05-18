@@ -1,7 +1,6 @@
 import XCTest
 @testable import NotesCore
 
-@MainActor
 final class NoteServiceTests: XCTestCase {
 
     private func makeService() -> (NoteService, FakeNoteRepository) {

@@ -4,7 +4,6 @@ import Foundation
 ///
 /// 本イテレーションではタイトルと本文に対する単純な部分一致検索を提供する。
 /// タグ・日付などのフィルタ検索（F-SEARCH-02）は後続イテレーションで拡張する。
-@MainActor
 public final class SearchService {
     private let repository: NoteRepository
 

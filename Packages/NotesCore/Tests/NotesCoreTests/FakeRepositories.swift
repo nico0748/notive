@@ -5,7 +5,6 @@ import Foundation
 //
 // SwiftData に依存せずユースケース／ViewModel を検証するための軽量フェイク。
 
-@MainActor
 final class FakeUserRepository: UserRepository {
     var storage: [User] = []
 
@@ -22,7 +21,6 @@ final class FakeUserRepository: UserRepository {
     }
 }
 
-@MainActor
 final class FakeWorkspaceRepository: WorkspaceRepository {
     var storage: [Workspace] = []
 
@@ -39,7 +37,6 @@ final class FakeWorkspaceRepository: WorkspaceRepository {
     }
 }
 
-@MainActor
 final class FakeFolderRepository: FolderRepository {
     var storage: [UUID: Folder] = [:]
 
@@ -59,7 +56,6 @@ final class FakeFolderRepository: FolderRepository {
     }
 }
 
-@MainActor
 final class FakeNoteRepository: NoteRepository {
     var storage: [UUID: Note] = [:]
 

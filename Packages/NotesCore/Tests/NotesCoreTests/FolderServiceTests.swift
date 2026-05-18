@@ -1,7 +1,6 @@
 import XCTest
 @testable import NotesCore
 
-@MainActor
 final class FolderServiceTests: XCTestCase {
 
     /// テスト対象のサービスと、その依存リポジトリをまとめて保持するハーネス。

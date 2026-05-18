@@ -4,7 +4,6 @@ import Foundation
 ///
 /// 本イテレーションでは認証バックエンドを持たないため、「ローカルユーザーで開始」
 /// 操作に対応する個人ワークスペースの生成のみを扱う（F-ORG-01 / F-AUTH スタブ）。
-@MainActor
 public final class WorkspaceService {
     private let userRepository: UserRepository
     private let workspaceRepository: WorkspaceRepository

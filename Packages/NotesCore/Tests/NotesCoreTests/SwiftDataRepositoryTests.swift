@@ -3,14 +3,19 @@ import XCTest
 @testable import NotesCore
 
 /// SwiftData リポジトリ実装の検証。インメモリストアを用いる。
-@MainActor
+///
+/// SwiftData の `ModelContext` は `@MainActor` 隔離のため、各テストメソッドを
+/// `@MainActor` とする（クラスを `@MainActor` にすると非隔離の `XCTestCase` との
+/// 不一致警告が出るため、メソッド単位で付与する）。
 final class SwiftDataRepositoryTests: XCTestCase {
 
+    @MainActor
     private func makeContext() throws -> ModelContext {
         let container = try ModelContainerFactory.makeContainer(inMemory: true)
         return container.mainContext
     }
 
+    @MainActor
     func testNoteRepositorySaveAndFetchRoundTrip() async throws {
         let repository = SwiftDataNoteRepository(context: try makeContext())
         let workspace = UUID()
@@ -32,6 +37,7 @@ final class SwiftDataRepositoryTests: XCTestCase {
         XCTAssertEqual(fetched?.tagIDs.count, 1)
     }
 
+    @MainActor
     func testNoteRepositoryUpdateOverwritesExisting() async throws {
         let repository = SwiftDataNoteRepository(context: try makeContext())
         var note = Note(title: "初期", workspaceID: UUID())
@@ -45,14 +51,17 @@ final class SwiftDataRepositoryTests: XCTestCase {
         XCTAssertEqual(all.first?.title, "更新済み")
     }
 
+    @MainActor
     func testNoteRepositoryDelete() async throws {
         let repository = SwiftDataNoteRepository(context: try makeContext())
         let note = Note(title: "削除対象", workspaceID: UUID())
         try await repository.save(note)
         try await repository.delete(id: note.id)
-        XCTAssertNil(try await repository.note(id: note.id))
+        let fetched = try await repository.note(id: note.id)
+        XCTAssertNil(fetched)
     }
 
+    @MainActor
     func testDeleteMissingNoteThrowsNotFound() async throws {
         let repository = SwiftDataNoteRepository(context: try makeContext())
         let missingID = UUID()
@@ -64,6 +73,7 @@ final class SwiftDataRepositoryTests: XCTestCase {
         }
     }
 
+    @MainActor
     func testFolderRepositoryScopesByWorkspace() async throws {
         let repository = SwiftDataFolderRepository(context: try makeContext())
         let workspaceA = UUID()
@@ -71,18 +81,25 @@ final class SwiftDataRepositoryTests: XCTestCase {
         try await repository.save(Folder(name: "A", workspaceID: workspaceA))
         try await repository.save(Folder(name: "B", workspaceID: workspaceB))
 
-        XCTAssertEqual(try await repository.folders(workspaceID: workspaceA).count, 1)
-        XCTAssertEqual(try await repository.folders(workspaceID: workspaceB).count, 1)
+        let foldersA = try await repository.folders(workspaceID: workspaceA)
+        let foldersB = try await repository.folders(workspaceID: workspaceB)
+        XCTAssertEqual(foldersA.count, 1)
+        XCTAssertEqual(foldersB.count, 1)
     }
 
+    @MainActor
     func testUserRepositoryReturnsSavedUser() async throws {
         let repository = SwiftDataUserRepository(context: try makeContext())
-        XCTAssertNil(try await repository.currentUser())
+        let before = try await repository.currentUser()
+        XCTAssertNil(before)
+
         let user = User.makeLocal()
         try await repository.save(user)
-        XCTAssertEqual(try await repository.currentUser()?.id, user.id)
+        let after = try await repository.currentUser()
+        XCTAssertEqual(after?.id, user.id)
     }
 
+    @MainActor
     func testWorkspaceRepositoryPersistsKind() async throws {
         let repository = SwiftDataWorkspaceRepository(context: try makeContext())
         let workspace = Workspace.makePersonal(ownerID: UUID())

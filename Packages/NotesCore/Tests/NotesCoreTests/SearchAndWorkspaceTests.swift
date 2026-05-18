@@ -1,7 +1,6 @@
 import XCTest
 @testable import NotesCore
 
-@MainActor
 final class SearchAndWorkspaceTests: XCTestCase {
 
     func testSearchMatchesTitleAndBody() async throws {
@@ -38,8 +37,10 @@ final class SearchAndWorkspaceTests: XCTestCase {
         try await repository.save(trashed)
 
         let service = SearchService(repository: repository)
-        XCTAssertTrue(try await service.search(query: "古い", in: workspace).isEmpty)
-        XCTAssertEqual(try await service.search(query: "古い", in: workspace, includeTrashed: true).count, 1)
+        let activeResults = try await service.search(query: "古い", in: workspace)
+        XCTAssertTrue(activeResults.isEmpty)
+        let allResults = try await service.search(query: "古い", in: workspace, includeTrashed: true)
+        XCTAssertEqual(allResults.count, 1)
     }
 
     func testStartAsLocalUserCreatesUserAndWorkspace() async throws {
