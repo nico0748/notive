@@ -33,12 +33,29 @@ public final class EditorViewModel {
     public private(set) var isMarkdownMode: Bool = false
     public private(set) var saveState: SaveState = .idle
 
+    /// 編集中ノートに付与されているタグの識別子（F-ORG-03）。
+    public private(set) var tagIDs: [UUID] = []
+    /// 現在のワークスペースで選択可能なタグ一覧。
+    public private(set) var availableTags: [Tag] = []
+
     private let noteService: NoteService
+    private let tagService: TagService
     private let converter = MarkdownConverter()
     private var autosaveTask: Task<Void, Never>?
 
-    public init(noteService: NoteService) {
+    public init(noteService: NoteService, tagService: TagService) {
         self.noteService = noteService
+        self.tagService = tagService
+    }
+
+    /// 編集対象のノートに付与されたタグを、ワークスペース内での表示順で返す。
+    public var assignedTags: [Tag] {
+        tagIDs.compactMap { id in availableTags.first { $0.id == id } }
+    }
+
+    /// まだ付与されていない、選択可能なタグ。
+    public var unassignedTags: [Tag] {
+        availableTags.filter { !tagIDs.contains($0.id) }
     }
 
     /// 編集対象のノートを読み込む。別ノートを開く前に保留中の保存をフラッシュする。
@@ -47,9 +64,11 @@ public final class EditorViewModel {
         self.note = note
         title = note.title
         blocks = note.blocks
+        tagIDs = note.tagIDs
         isMarkdownMode = false
         markdownText = ""
         saveState = .saved
+        availableTags = (try? await tagService.tags(in: note.workspaceID)) ?? []
     }
 
     /// 編集対象を閉じる。保留中の保存を確定する。
@@ -59,6 +78,8 @@ public final class EditorViewModel {
         title = ""
         blocks = []
         markdownText = ""
+        tagIDs = []
+        availableTags = []
         saveState = .idle
     }
 
@@ -99,6 +120,7 @@ public final class EditorViewModel {
         }
         current.title = title
         current.blocks = blocks
+        current.tagIDs = tagIDs
 
         do {
             let saved = try await noteService.save(current)
@@ -113,6 +135,35 @@ public final class EditorViewModel {
     private func flushPendingSave() async {
         guard autosaveTask != nil, saveState == .editing else { return }
         await saveNow()
+    }
+
+    // MARK: - タグ操作（F-ORG-03）
+
+    /// タグの付与／解除を切り替える。
+    public func toggleTag(_ tagID: UUID) {
+        guard note != nil else { return }
+        if let index = tagIDs.firstIndex(of: tagID) {
+            tagIDs.remove(at: index)
+        } else {
+            tagIDs.append(tagID)
+        }
+        scheduleAutosave()
+    }
+
+    /// 新しいタグを作成し、編集中のノートへ付与する。
+    public func createAndAssignTag(named name: String) async {
+        guard let note else { return }
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        do {
+            let color = Tag.paletteColor(forIndex: availableTags.count)
+            let tag = try await tagService.createTag(name: trimmed, colorHex: color, in: note.workspaceID)
+            availableTags.append(tag)
+            tagIDs.append(tag.id)
+            scheduleAutosave()
+        } catch {
+            saveState = .failed(error.localizedDescription)
+        }
     }
 
     // MARK: - ブロック操作

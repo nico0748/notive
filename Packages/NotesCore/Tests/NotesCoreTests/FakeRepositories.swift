@@ -78,3 +78,22 @@ final class FakeNoteRepository: NoteRepository {
         storage.removeValue(forKey: id)
     }
 }
+
+final class FakeTagRepository: TagRepository {
+    var storage: [UUID: Tag] = [:]
+
+    func tags(workspaceID: UUID) async throws -> [Tag] {
+        storage.values
+            .filter { $0.workspaceID == workspaceID }
+            .sorted { $0.name < $1.name }
+    }
+
+    func save(_ tag: Tag) async throws {
+        storage[tag.id] = tag
+    }
+
+    func delete(id: UUID) async throws {
+        guard storage[id] != nil else { throw RepositoryError.notFound(id: id) }
+        storage.removeValue(forKey: id)
+    }
+}

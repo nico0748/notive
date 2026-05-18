@@ -15,10 +15,12 @@ public enum AppComposition {
         let workspaceRepository = SwiftDataWorkspaceRepository(context: modelContext)
         let folderRepository = SwiftDataFolderRepository(context: modelContext)
         let noteRepository = SwiftDataNoteRepository(context: modelContext)
+        let tagRepository = SwiftDataTagRepository(context: modelContext)
 
         let noteService = NoteService(repository: noteRepository)
         let folderService = FolderService(folderRepository: folderRepository, noteRepository: noteRepository)
         let searchService = SearchService(repository: noteRepository)
+        let tagService = TagService(repository: tagRepository)
         let workspaceService = WorkspaceService(
             userRepository: userRepository,
             workspaceRepository: workspaceRepository
@@ -28,6 +30,7 @@ public enum AppComposition {
             noteService: noteService,
             folderService: folderService,
             searchService: searchService,
+            tagService: tagService,
             workspaceService: workspaceService
         )
     }
