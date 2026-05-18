@@ -1,0 +1,26 @@
+## macOS / Xcode
+.DS_Store
+*.swp
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+.build/
+*.xcscmblueprint
+*.xccheckout
+
+## XcodeGen generates the project; it is not committed.
+*.xcodeproj/
+*.xcworkspace/
+
+## Swift Package Manager
+.swiftpm/
+Packages/*/.build/
+Package.resolved
+
+## Misc
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM

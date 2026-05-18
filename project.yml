@@ -1,0 +1,82 @@
+# XcodeGen specification for Notive.
+# Generate the Xcode project with:  xcodegen generate
+# (see README.md for the full bootstrap procedure)
+name: Notive
+
+options:
+  bundleIdPrefix: com.notive
+  createIntermediateGroups: true
+  deploymentTarget:
+    macOS: "14.0"
+    iOS: "17.0"
+  developmentLanguage: ja
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
+    GCC_TREAT_WARNINGS_AS_ERRORS: NO
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+
+packages:
+  NotesCore:
+    path: Packages/NotesCore
+  Highlightr:
+    url: https://github.com/raspu/Highlightr
+    from: "2.2.0"
+
+targets:
+  Notive-macOS:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: Apps/NotesMac
+    dependencies:
+      - package: NotesCore
+      - package: Highlightr
+    settings:
+      base:
+        PRODUCT_NAME: Notive
+        PRODUCT_BUNDLE_IDENTIFIER: com.notive.mac
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Notive
+        INFOPLIST_KEY_LSApplicationCategoryType: "public.app-category.productivity"
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        ENABLE_HARDENED_RUNTIME: YES
+        COMBINE_HIDPI_IMAGES: YES
+
+  Notive-iPadOS:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Apps/NotesPad
+    dependencies:
+      - package: NotesCore
+    settings:
+      base:
+        PRODUCT_NAME: Notive
+        PRODUCT_BUNDLE_IDENTIFIER: com.notive.pad
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Notive
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        TARGETED_DEVICE_FAMILY: "2"
+        SUPPORTS_MACCATALYST: NO
+
+schemes:
+  Notive-macOS:
+    build:
+      targets:
+        Notive-macOS: all
+    run:
+      config: Debug
+  Notive-iPadOS:
+    build:
+      targets:
+        Notive-iPadOS: all
+    run:
+      config: Debug
