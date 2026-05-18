@@ -32,7 +32,7 @@ jobs:
         run: swiftlint lint --strict
 
   app:
-    name: macOS app (build)
+    name: Apps (macOS & iPadOS build)
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -49,4 +49,12 @@ jobs:
             -project Notive.xcodeproj \
             -scheme Notive-macOS \
             -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Build iPadOS app
+        run: |
+          xcodebuild build \
+            -project Notive.xcodeproj \
+            -scheme Notive-iPadOS \
+            -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO

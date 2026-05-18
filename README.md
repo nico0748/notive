@@ -17,7 +17,7 @@ MacBook（タイピング中心）と iPad（手書き中心）の2デバイス�
 |------|-----------|
 | Xcode | 15.4 以降 |
 | macOS（実行・開発） | macOS 14 (Sonoma) 以降 |
-| iPadOS（ターゲットのみ） | iPadOS 17 以降 |
+| iPadOS | iPadOS 17 以降 |
 | Swift | 5.10 以降 |
 | 依存管理 | Swift Package Manager |
 
@@ -44,7 +44,7 @@ brew install xcodegen
 open Notive.xcodeproj
 ```
 
-Xcode で **`Notive-macOS`** スキームを選択して実行してください
+Xcode で **`Notive-macOS`** または **`Notive-iPadOS`** スキームを選択して実行してください
 （初回ビルド時に Highlightr パッケージが自動解決されます）。
 
 > 署名: ローカル実行のみであれば自動署名（Sign to Run Locally）で動作します。
@@ -65,6 +65,19 @@ Xcode で **`Notive-macOS`** スキームを選択して実行してください
 8. ゴミ箱に入れたノートは 30 日経過後、起動時に自動削除されます。
 9. ライト／ダークモードの双方に対応しています。
 
+## 使い方（iPadOS）
+
+iPadOS 版は macOS 版と同じ `NotesCore`（ドメイン・永続化・ViewModel）を共有し、
+ノートの閲覧・編集・整理・検索・タグ付けに対応します。
+
+1. 「ローカルユーザーで開始」後、3 カラム（サイドバー／ノート一覧／エディタ）で操作します。
+2. エディタはツールバーの **編集／プレビュー**で切り替えます。編集は Markdown テキスト、
+   プレビューはリッチ表示（見出し・リスト・コード・チェックリスト・テーブル等）です。
+3. タイトル下のタグバーからタグを付与・作成できます。
+
+> 手書き（Apple Pencil、PencilKit）は後続イテレーションで対応します。
+> ストロークのデータ形式が要件定義書 §11.2 で未決の設計事項のため、本イテレーションでは扱いません。
+
 ---
 
 ## ディレクトリ構成
@@ -76,7 +89,7 @@ notive/
 ├── project.yml                     XcodeGen プロジェクト定義
 ├── .swiftlint.yml                  SwiftLint 設定
 ├── Scripts/bootstrap.sh            プロジェクト生成スクリプト
-├── .github/workflows/ci.yml        CI（NotesCore テスト / SwiftLint / macOS ビルド）
+├── .github/workflows/ci.yml        CI（NotesCore テスト / SwiftLint / macOS・iPadOS ビルド）
 ├── Packages/
 │   └── NotesCore/                  共有 Swift Package（プラットフォーム非依存ロジック）
 │       └── Sources/NotesCore/
@@ -87,7 +100,7 @@ notive/
 │           └── Composition/        合成ルート（依存の結線）
 └── Apps/
     ├── NotesMac/                   macOS アプリ（本イテレーションの実装対象）
-    └── NotesPad/                   iPadOS アプリ（空シェル。後続イテレーションで実装）
+    └── NotesPad/                   iPadOS アプリ（ノート閲覧・編集・タグ。手書きは後続）
 ```
 
 ### アーキテクチャ
