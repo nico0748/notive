@@ -49,7 +49,6 @@ struct MacPdfCard: View {
                 .frame(width: 56, height: 72)
                 .background(Color(nsColor: .textBackgroundColor))
                 .clipShape(RoundedRectangle(cornerRadius: 4))
-                .overlay(RoundedRectangle(cornerRadius: 4).stroke(.quaternary))
         } else {
             Image(systemName: "doc.richtext")
                 .font(.largeTitle)
@@ -59,7 +58,7 @@ struct MacPdfCard: View {
     }
 }
 
-/// PDF を複数ページ・サムネイル一覧付きで全体表示するシート（F-PDF-02、macOS）。
+/// PDF を複数ページ表示するシート（F-PDF-02、macOS）。
 struct MacPdfViewerView: View {
     let pdf: PdfBlock
 
@@ -81,42 +80,19 @@ struct MacPdfViewerView: View {
     }
 }
 
-/// `PDFView` とサムネイル一覧を組み合わせた PDF 表示ビュー（F-PDF-02、macOS）。
+/// `PDFView` をラップした PDF 表示ビュー（F-PDF-02、macOS、複数ページの連続スクロール）。
 struct MacPdfDocumentView: NSViewRepresentable {
     let data: Data
 
-    func makeNSView(context: Context) -> NSView {
-        let container = NSView()
-
+    func makeNSView(context: Context) -> PDFView {
         let pdfView = PDFView()
         pdfView.autoScales = true
         pdfView.displayMode = .singlePageContinuous
-        pdfView.displayDirection = .vertical
         pdfView.document = PDFDocument(data: data)
-        pdfView.translatesAutoresizingMaskIntoConstraints = false
-
-        let thumbnailView = PDFThumbnailView()
-        thumbnailView.pdfView = pdfView
-        thumbnailView.thumbnailSize = CGSize(width: 80, height: 110)
-        thumbnailView.layoutMode = .vertical
-        thumbnailView.translatesAutoresizingMaskIntoConstraints = false
-
-        container.addSubview(thumbnailView)
-        container.addSubview(pdfView)
-        NSLayoutConstraint.activate([
-            thumbnailView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            thumbnailView.topAnchor.constraint(equalTo: container.topAnchor),
-            thumbnailView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            thumbnailView.widthAnchor.constraint(equalToConstant: 116),
-            pdfView.leadingAnchor.constraint(equalTo: thumbnailView.trailingAnchor),
-            pdfView.topAnchor.constraint(equalTo: container.topAnchor),
-            pdfView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            pdfView.trailingAnchor.constraint(equalTo: container.trailingAnchor)
-        ])
-        return container
+        return pdfView
     }
 
-    func updateNSView(_ nsView: NSView, context: Context) {}
+    func updateNSView(_ pdfView: PDFView, context: Context) {}
 }
 
 /// PDF の先頭ページをサムネイル画像へ描画するヘルパー（macOS）。
