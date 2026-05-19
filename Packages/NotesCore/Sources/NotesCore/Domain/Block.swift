@@ -16,8 +16,8 @@ public enum Block: Identifiable, Codable, Hashable, Sendable {
     case table(TableBlock)
     case image(ImageBlock)
     case ink(InkBlock)
+    case pdf(PdfBlock)
     // 将来追加予定:
-    // case pdf(PdfBlock)
     // case shape(ShapeBlock)
     // case textBox(TextBoxBlock)
 
@@ -33,11 +33,12 @@ public enum Block: Identifiable, Codable, Hashable, Sendable {
         case .table(let block): return block.id
         case .image(let block): return block.id
         case .ink(let block): return block.id
+        case .pdf(let block): return block.id
         }
     }
 
     /// 実装済みのブロック種別数。
-    public static let implementedKindCount = 10
+    public static let implementedKindCount = 11
 
     /// 全文検索（F-SEARCH-01）で参照するプレーンテキスト表現。
     public var plainText: String {
@@ -54,6 +55,9 @@ public enum Block: Identifiable, Codable, Hashable, Sendable {
         case .image(let block): return block.caption
         // 手書きの全文検索（OCR、F-INK-10）は後続イテレーションで対応する。
         case .ink: return ""
+        case .pdf(let block):
+            // 取り込み時に抽出した PDF 本文を全文検索の対象に含める（F-PDF-08）。
+            return [block.caption, block.extractedText].filter { !$0.isEmpty }.joined(separator: "\n")
         }
     }
 }
@@ -257,4 +261,36 @@ public struct InkBlock: Identifiable, Codable, Hashable, Sendable {
         template = try container.decodeIfPresent(InkTemplate.self, forKey: .template) ?? .blank
         height = try container.decode(Double.self, forKey: .height)
     }
+}
+
+/// PDF ブロック（F-PDF-01／F-PDF-02、PDF の読み込みとノート内埋め込み表示）。
+///
+/// PDF バイト列は `InkBlock` と同様にブロックへインラインで保持する。
+/// 全文検索（F-PDF-08）のため、取り込み時に PDFKit で抽出した本文を `extractedText`
+/// に保存する。`NotesCore` は PDFKit に依存せず、抽出はアプリ層が担う。
+public struct PdfBlock: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    /// PDF ファイルのバイト列。
+    public var documentData: Data
+    /// 表示名（取り込み元ファイル名など）。
+    public var caption: String
+    /// ページ数（取り込み時にキャッシュ。一覧・表示用）。
+    public var pageCount: Int
+    /// 全文検索用に取り込み時へ抽出した PDF 本文（F-PDF-08）。
+    public var extractedText: String
+
+    public init(id: UUID = UUID(),
+                documentData: Data = Data(),
+                caption: String = "",
+                pageCount: Int = 0,
+                extractedText: String = "") {
+        self.id = id
+        self.documentData = documentData
+        self.caption = caption
+        self.pageCount = pageCount
+        self.extractedText = extractedText
+    }
+
+    /// PDF が未読み込みかどうか。
+    public var isEmpty: Bool { documentData.isEmpty }
 }

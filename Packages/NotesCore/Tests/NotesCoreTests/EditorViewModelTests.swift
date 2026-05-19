@@ -81,4 +81,40 @@ final class EditorViewModelTests: XCTestCase {
         XCTAssertEqual(inkBlocks.first?.id, ink.id)
         XCTAssertEqual(inkBlocks.first?.drawingData, Data([0x01, 0x02, 0x03, 0x04]))
     }
+
+    @MainActor
+    func testAppendPdfBlockAndRetrieve() async throws {
+        let (editor, repository) = makeEditor()
+        let note = Note(title: "PDF", workspaceID: UUID())
+        try await repository.save(note)
+        await editor.open(note)
+
+        let pdf = PdfBlock(documentData: Data([0x25, 0x50]), caption: "資料", pageCount: 1)
+        editor.appendPdfBlock(pdf)
+        XCTAssertEqual(editor.pdfBlock(id: pdf.id)?.caption, "資料")
+        XCTAssertEqual(editor.pdfBlock(id: pdf.id)?.pageCount, 1)
+    }
+
+    @MainActor
+    func testPdfBlockSurvivesMarkdownRoundTrip() async throws {
+        let (editor, repository) = makeEditor()
+        let note = Note(title: "PDF", workspaceID: UUID())
+        try await repository.save(note)
+        await editor.open(note)
+
+        let pdf = PdfBlock(documentData: Data([0x25, 0x50, 0x44, 0x46]), caption: "資料", pageCount: 2)
+        editor.appendPdfBlock(pdf)
+
+        editor.toggleMarkdownMode()
+        XCTAssertTrue(editor.markdownText.contains("notive-pdf:\(pdf.id.uuidString)"))
+
+        editor.toggleMarkdownMode()
+        let pdfBlocks: [PdfBlock] = editor.blocks.compactMap { block in
+            if case .pdf(let value) = block { return value }
+            return nil
+        }
+        XCTAssertEqual(pdfBlocks.count, 1)
+        XCTAssertEqual(pdfBlocks.first?.documentData, Data([0x25, 0x50, 0x44, 0x46]))
+        XCTAssertEqual(pdfBlocks.first?.caption, "資料")
+    }
 }

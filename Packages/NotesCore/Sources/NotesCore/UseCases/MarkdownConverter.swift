@@ -43,11 +43,17 @@ public struct MarkdownConverter {
             // 手書きストロークは Markdown では表現できないため、識別子のみを
             // プレースホルダとして残す。実データの保持は EditorViewModel が担う。
             return "\(Self.inkMarkerPrefix)\(ink.id.uuidString) -->"
+        case .pdf(let pdf):
+            // PDF も Markdown で表現できないため、識別子のみをプレースホルダとして残す。
+            return "\(Self.pdfMarkerPrefix)\(pdf.id.uuidString) -->"
         }
     }
 
     /// 手書きブロックを Markdown 内で表すコメントマーカーの接頭辞。
     static let inkMarkerPrefix = "<!-- notive-ink:"
+
+    /// PDF ブロックを Markdown 内で表すコメントマーカーの接頭辞。
+    static let pdfMarkerPrefix = "<!-- notive-pdf:"
 
     private func markdown(from table: TableBlock) -> String {
         let headerLine = "| " + table.headers.joined(separator: " | ") + " |"
@@ -79,6 +85,9 @@ public struct MarkdownConverter {
                 index += 1
             } else if trimmed.hasPrefix(Self.inkMarkerPrefix) {
                 blocks.append(.ink(parseInk(trimmed)))
+                index += 1
+            } else if trimmed.hasPrefix(Self.pdfMarkerPrefix) {
+                blocks.append(.pdf(parsePdf(trimmed)))
                 index += 1
             } else if trimmed.hasPrefix("![") {
                 blocks.append(.image(parseImage(trimmed)))
@@ -169,6 +178,16 @@ public struct MarkdownConverter {
         }
         let identifier = UUID(uuidString: content.trimmingCharacters(in: .whitespaces)) ?? UUID()
         return InkBlock(id: identifier)
+    }
+
+    /// `<!-- notive-pdf:UUID -->` を識別子のみのプレースホルダ PDF ブロックへ変換する。
+    private func parsePdf(_ trimmed: String) -> PdfBlock {
+        var content = String(trimmed.dropFirst(Self.pdfMarkerPrefix.count))
+        if let range = content.range(of: "-->") {
+            content = String(content[content.startIndex..<range.lowerBound])
+        }
+        let identifier = UUID(uuidString: content.trimmingCharacters(in: .whitespaces)) ?? UUID()
+        return PdfBlock(id: identifier)
     }
 
     private func isChecklistLine(_ trimmed: String) -> Bool {
@@ -289,6 +308,7 @@ public struct MarkdownConverter {
                 || trimmed.hasPrefix("|")
                 || trimmed.hasPrefix("![")
                 || trimmed.hasPrefix(Self.inkMarkerPrefix)
+                || trimmed.hasPrefix(Self.pdfMarkerPrefix)
                 || numberedListContent(of: trimmed) != nil {
                 break
             }

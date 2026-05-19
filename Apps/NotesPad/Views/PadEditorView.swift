@@ -1,16 +1,19 @@
 import NotesCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// iPadOS の右ペインのノートエディタ。
 ///
 /// テキストは Markdown 編集とリッチプレビューを切り替え（F-EDIT-01／F-EDIT-02）、
 /// 手書きブロックはプレビュー上のキャンバスシートで編集する（F-INK-13）。
+/// PDF はツールバーから読み込んでノート内に埋め込む（F-PDF-01／F-PDF-02）。
 struct PadEditorView: View {
     @Bindable var editor: EditorViewModel
 
     @State private var isCreatingTag = false
     @State private var newTagName = ""
     @State private var inkEditTarget: InkEditTarget?
+    @State private var isImportingPdf = false
 
     /// 手書き編集シートの対象。`.sheet(item:)` で扱うため `Identifiable` でラップする。
     private struct InkEditTarget: Identifiable {
@@ -41,6 +44,11 @@ struct PadEditorView: View {
         }
         .sheet(item: $inkEditTarget) { target in
             PadInkEditorView(editor: editor, inkID: target.id)
+        }
+        .fileImporter(isPresented: $isImportingPdf, allowedContentTypes: [.pdf]) { result in
+            if case .success(let url) = result, let block = PdfImport.makeBlock(from: url) {
+                editor.appendPdfBlock(block)
+            }
         }
     }
 
@@ -122,6 +130,13 @@ struct PadEditorView: View {
                         inkEditTarget = InkEditTarget(id: editor.addInkBlock())
                     } label: {
                         Label("手書きを追加", systemImage: "scribble.variable")
+                    }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        isImportingPdf = true
+                    } label: {
+                        Label("PDF を追加", systemImage: "doc.badge.plus")
                     }
                 }
             }

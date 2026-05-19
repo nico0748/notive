@@ -110,4 +110,37 @@ final class DomainModelTests: XCTestCase {
         XCTAssertEqual(decoded.template, .blank)
         XCTAssertEqual(decoded.height, 320)
     }
+
+    func testPdfBlockCodableRoundTrip() throws {
+        let pdf = PdfBlock(
+            documentData: Data([0x25, 0x50, 0x44, 0x46]),
+            caption: "資料",
+            pageCount: 3,
+            extractedText: "本文サンプル"
+        )
+        let block = Block.pdf(pdf)
+        let decoded = try JSONDecoder().decode(Block.self, from: JSONEncoder().encode(block))
+        XCTAssertEqual(decoded, block)
+        XCTAssertEqual(decoded.id, pdf.id)
+    }
+
+    /// PDF 本文が全文検索（F-PDF-08）の対象になることを確認する。
+    func testPdfBlockPlainTextIncludesCaptionAndExtractedText() {
+        let pdf = PdfBlock(caption: "設計書", pageCount: 2, extractedText: "アーキテクチャ概要")
+        XCTAssertEqual(Block.pdf(pdf).plainText, "設計書\nアーキテクチャ概要")
+    }
+
+    func testPdfBlockIsEmptyReflectsDocumentData() {
+        XCTAssertTrue(PdfBlock().isEmpty)
+        XCTAssertFalse(PdfBlock(documentData: Data([0x01])).isEmpty)
+    }
+
+    /// PDF 本文がノート検索（F-PDF-08）に統合されていることを確認する。
+    func testNoteSearchMatchesPdfExtractedText() {
+        let pdf = PdfBlock(caption: "会議資料", pageCount: 1, extractedText: "四半期の売上目標")
+        let note = Note(title: "メモ", blocks: [.pdf(pdf)], workspaceID: UUID())
+        XCTAssertTrue(note.matches(query: "売上目標"))
+        XCTAssertTrue(note.matches(query: "会議資料"))
+        XCTAssertFalse(note.matches(query: "存在しない語"))
+    }
 }

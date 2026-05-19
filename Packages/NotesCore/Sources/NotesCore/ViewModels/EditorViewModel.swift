@@ -45,6 +45,9 @@ public final class EditorViewModel {
     /// 手書きブロックの実データ。Markdown はストロークを表現できないため、
     /// Markdown 往復変換でも手書きを失わないよう識別子で保持する。
     private var inkBlocksByID: [UUID: InkBlock] = [:]
+    /// PDF ブロックの実データ。Markdown は PDF を表現できないため、
+    /// 手書きと同様に識別子で保持して往復変換での消失を防ぐ。
+    private var pdfBlocksByID: [UUID: PdfBlock] = [:]
 
     public init(noteService: NoteService, tagService: TagService) {
         self.noteService = noteService
@@ -72,7 +75,8 @@ public final class EditorViewModel {
         markdownText = ""
         saveState = .saved
         inkBlocksByID = [:]
-        captureInkBlocks()
+        pdfBlocksByID = [:]
+        captureBinaryBlocks()
         availableTags = (try? await tagService.tags(in: note.workspaceID)) ?? []
     }
 
@@ -86,18 +90,19 @@ public final class EditorViewModel {
         tagIDs = []
         availableTags = []
         inkBlocksByID = [:]
+        pdfBlocksByID = [:]
         saveState = .idle
     }
 
     /// Markdown モードとリッチモードを切り替える（F-EDIT-02）。
     public func toggleMarkdownMode() {
         if isMarkdownMode {
-            // Markdown → リッチ: テキストを解析し、手書きの実データを復元する。
-            blocks = restoreInkBlocks(in: converter.blocks(from: markdownText))
+            // Markdown → リッチ: テキストを解析し、手書き・PDF の実データを復元する。
+            blocks = restoreBinaryBlocks(in: converter.blocks(from: markdownText))
             isMarkdownMode = false
         } else {
-            // リッチ → Markdown: 手書きの実データを退避してからテキスト化する。
-            captureInkBlocks()
+            // リッチ → Markdown: 手書き・PDF の実データを退避してからテキスト化する。
+            captureBinaryBlocks()
             markdownText = converter.markdown(from: blocks)
             isMarkdownMode = true
         }
@@ -123,7 +128,7 @@ public final class EditorViewModel {
         saveState = .saving
 
         if isMarkdownMode {
-            blocks = restoreInkBlocks(in: converter.blocks(from: markdownText))
+            blocks = restoreBinaryBlocks(in: converter.blocks(from: markdownText))
         }
         current.title = title
         current.blocks = blocks
@@ -211,21 +216,48 @@ public final class EditorViewModel {
         return nil
     }
 
-    /// 現在のブロック列から手書きの実データを退避する。
-    /// ストロークが無くてもテンプレート設定だけは Markdown 往復で失わないよう退避する。
-    private func captureInkBlocks() {
+    // MARK: - PDF 操作（F-PDF-01／F-PDF-02）
+
+    /// PDF ブロックを末尾に追加する。
+    public func appendPdfBlock(_ pdf: PdfBlock) {
+        blocks.append(.pdf(pdf))
+        pdfBlocksByID[pdf.id] = pdf
+        scheduleAutosave()
+    }
+
+    /// 指定した PDF ブロックの現在の内容を返す。
+    public func pdfBlock(id: UUID) -> PdfBlock? {
         for block in blocks {
-            if case .ink(let ink) = block, !ink.isEmpty || ink.template != .blank {
+            if case .pdf(let pdf) = block, pdf.id == id { return pdf }
+        }
+        return nil
+    }
+
+    // MARK: - 手書き・PDF の往復保持
+
+    /// 現在のブロック列から手書き・PDF の実データを退避する。
+    /// 手書きはストロークが無くてもテンプレート設定だけは Markdown 往復で失わないよう退避する。
+    private func captureBinaryBlocks() {
+        for block in blocks {
+            switch block {
+            case .ink(let ink) where !ink.isEmpty || ink.template != .blank:
                 inkBlocksByID[ink.id] = ink
+            case .pdf(let pdf) where !pdf.isEmpty:
+                pdfBlocksByID[pdf.id] = pdf
+            default:
+                break
             }
         }
     }
 
-    /// Markdown 解析で生じた空の手書きプレースホルダを、退避済みの実データで復元する。
-    private func restoreInkBlocks(in parsed: [Block]) -> [Block] {
+    /// Markdown 解析で生じた空のプレースホルダを、退避済みの実データで復元する。
+    private func restoreBinaryBlocks(in parsed: [Block]) -> [Block] {
         parsed.map { block in
             if case .ink(let ink) = block, ink.isEmpty, let stored = inkBlocksByID[ink.id] {
                 return .ink(stored)
+            }
+            if case .pdf(let pdf) = block, pdf.isEmpty, let stored = pdfBlocksByID[pdf.id] {
+                return .pdf(stored)
             }
             return block
         }
