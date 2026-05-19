@@ -92,6 +92,20 @@ final class MarkdownConverterTests: XCTestCase {
         }
     }
 
+    func testInkBlockRoundTripsViaMarker() {
+        let identifier = UUID()
+        let markdown = converter.markdown(from: [.ink(InkBlock(id: identifier, drawingData: Data([1, 2, 3])))])
+        XCTAssertTrue(markdown.contains("notive-ink:\(identifier.uuidString)"))
+
+        let restored = converter.blocks(from: markdown)
+        guard case .ink(let ink) = restored.first else {
+            return XCTFail("手書きブロックが復元されていない")
+        }
+        XCTAssertEqual(ink.id, identifier)
+        // Markdown はストロークの実データを保持しないため、復元時は空になる。
+        XCTAssertTrue(ink.isEmpty)
+    }
+
     private func blockKind(_ block: Block) -> String {
         switch block {
         case .heading: return "heading"
@@ -103,6 +117,7 @@ final class MarkdownConverterTests: XCTestCase {
         case .checklist: return "checklist"
         case .table: return "table"
         case .image: return "image"
+        case .ink: return "ink"
         }
     }
 }

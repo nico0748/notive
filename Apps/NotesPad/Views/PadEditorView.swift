@@ -3,13 +3,19 @@ import SwiftUI
 
 /// iPadOS の右ペインのノートエディタ。
 ///
-/// 本イテレーションでは編集を Markdown テキストで行い、プレビューでリッチ表示する
-/// （F-EDIT-01／F-EDIT-02）。手書き（Apple Pencil）は後続イテレーションで対応する。
+/// テキストは Markdown 編集とリッチプレビューを切り替え（F-EDIT-01／F-EDIT-02）、
+/// 手書きブロックはプレビュー上のキャンバスシートで編集する（F-INK-13）。
 struct PadEditorView: View {
     @Bindable var editor: EditorViewModel
 
     @State private var isCreatingTag = false
     @State private var newTagName = ""
+    @State private var inkEditTarget: InkEditTarget?
+
+    /// 手書き編集シートの対象。`.sheet(item:)` で扱うため `Identifiable` でラップする。
+    private struct InkEditTarget: Identifiable {
+        let id: UUID
+    }
 
     var body: some View {
         Group {
@@ -32,6 +38,9 @@ struct PadEditorView: View {
                 Task { await editor.createAndAssignTag(named: name) }
             }
             Button("キャンセル", role: .cancel) { newTagName = "" }
+        }
+        .sheet(item: $inkEditTarget) { target in
+            PadInkEditorView(editor: editor, inkID: target.id)
         }
     }
 
@@ -64,8 +73,10 @@ struct PadEditorView: View {
                     .onChange(of: editor.markdownText) { _, _ in editor.scheduleAutosave() }
             } else {
                 ScrollView {
-                    PadBlockRenderer(blocks: editor.blocks)
-                        .padding()
+                    PadBlockRenderer(blocks: editor.blocks) { inkID in
+                        inkEditTarget = InkEditTarget(id: inkID)
+                    }
+                    .padding()
                 }
             }
         }
@@ -105,6 +116,15 @@ struct PadEditorView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         if editor.note != nil {
+            if !editor.isMarkdownMode {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        inkEditTarget = InkEditTarget(id: editor.addInkBlock())
+                    } label: {
+                        Label("手書きを追加", systemImage: "scribble.variable")
+                    }
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     editor.toggleMarkdownMode()

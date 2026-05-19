@@ -70,4 +70,18 @@ final class DomainModelTests: XCTestCase {
         let decoded = try JSONDecoder().decode(Note.self, from: data)
         XCTAssertEqual(decoded, note)
     }
+
+    func testInkBlockCodableRoundTrip() throws {
+        let ink = InkBlock(drawingData: Data([0x01, 0x02, 0x03, 0xFF]), height: 320)
+        let block = Block.ink(ink)
+        let decoded = try JSONDecoder().decode(Block.self, from: JSONEncoder().encode(block))
+        XCTAssertEqual(decoded, block)
+        XCTAssertEqual(decoded.id, ink.id)
+        XCTAssertEqual(decoded.plainText, "")
+    }
+
+    func testInkBlockIsEmptyReflectsDrawingData() {
+        XCTAssertTrue(InkBlock().isEmpty)
+        XCTAssertFalse(InkBlock(drawingData: Data([0x01])).isEmpty)
+    }
 }
