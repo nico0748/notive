@@ -83,7 +83,8 @@ struct PadBlockRenderer: View {
         Button {
             onTapInk(ink.id)
         } label: {
-            Group {
+            ZStack {
+                InkTemplateView(template: ink.template)
                 if let image = Self.renderedImage(for: ink) {
                     Image(uiImage: image)
                         .resizable()
@@ -95,21 +96,36 @@ struct PadBlockRenderer: View {
                         Text("手書き（タップして描く）")
                     }
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 80)
                 }
             }
+            .frame(maxWidth: .infinity, minHeight: 80)
             .padding(8)
             .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
     }
 
-    /// 手書きブロックの描画を画像へレンダリングする。未描画なら `nil`。
+    /// 手書きブロックの背景・前景レイヤーを合成して画像へレンダリングする。
+    /// いずれのレイヤーも未描画なら `nil`。
     static func renderedImage(for ink: InkBlock) -> UIImage? {
-        guard !ink.isEmpty, let drawing = try? PKDrawing(data: ink.drawingData) else { return nil }
-        let bounds = drawing.bounds
-        guard !bounds.isEmpty, bounds.width.isFinite, bounds.height.isFinite else { return nil }
-        return drawing.image(from: bounds, scale: 2.0)
+        let layers = [ink.backgroundData, ink.drawingData]
+            .compactMap { try? PKDrawing(data: $0) }
+            .filter { !$0.bounds.isEmpty }
+        guard !layers.isEmpty else { return nil }
+
+        var bounds = layers[0].bounds
+        for drawing in layers.dropFirst() {
+            bounds = bounds.union(drawing.bounds)
+        }
+        guard bounds.width.isFinite, bounds.height.isFinite,
+              bounds.width > 0, bounds.height > 0 else { return nil }
+
+        let renderer = UIGraphicsImageRenderer(size: bounds.size)
+        return renderer.image { _ in
+            for drawing in layers {
+                drawing.image(from: bounds, scale: 2.0).draw(at: .zero)
+            }
+        }
     }
 
     private func tableView(_ table: TableBlock) -> some View {

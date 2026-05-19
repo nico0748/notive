@@ -91,6 +91,13 @@ struct InkPlaceholderView: View {
                 .foregroundStyle(.tint)
             Text(ink.isEmpty ? "手書きブロック（未描画）" : "手書きブロック")
                 .foregroundStyle(.secondary)
+            if ink.template != .blank {
+                Text(ink.template.displayName)
+                    .font(.caption)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.quaternary, in: Capsule())
+            }
             Spacer()
             Text("iPad で編集")
                 .font(.caption)

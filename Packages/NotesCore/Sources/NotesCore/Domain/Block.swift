@@ -183,28 +183,78 @@ public struct ImageBlock: Identifiable, Codable, Hashable, Sendable {
     }
 }
 
+/// 手書きブロックの背景テンプレート（F-INK-12、罫線・方眼・ドット・五線譜・コーネル式）。
+public enum InkTemplate: String, Codable, CaseIterable, Sendable {
+    case blank
+    case ruled
+    case grid
+    case dots
+    case staff
+    case cornell
+
+    /// UI 表示用の名称。
+    public var displayName: String {
+        switch self {
+        case .blank: return "なし"
+        case .ruled: return "罫線"
+        case .grid: return "方眼"
+        case .dots: return "ドット"
+        case .staff: return "五線譜"
+        case .cornell: return "コーネル式"
+        }
+    }
+}
+
 /// 手書きブロック（F-INK-13、タイプ済みテキストと手書きの混在配置）。
 ///
 /// ストロークは PencilKit の `PKDrawing.dataRepresentation()` をそのまま保持する
 /// （要件定義書 §11.2 の設計判断: v1.0 は Apple エコシステム専用のため
 /// ネイティブ形式を採用し、ロスレス・低実装コストを優先する）。
-/// `NotesCore` は PencilKit に依存せず、`drawingData` を不透明な `Data` として扱う。
+/// `NotesCore` は PencilKit に依存せず、ストロークを不透明な `Data` として扱う。
+///
+/// 手書きは前景・背景の 2 レイヤーに分離して保持する（F-INK-11）。表示時は
+/// テンプレート → 背景レイヤー → 前景レイヤーの順に合成する。
 public struct InkBlock: Identifiable, Codable, Hashable, Sendable {
     public var id: UUID
-    /// `PKDrawing.dataRepresentation()` のバイト列。空の場合は白紙のキャンバス。
+    /// 前景レイヤーの `PKDrawing.dataRepresentation()` のバイト列。
     public var drawingData: Data
+    /// 背景レイヤーの `PKDrawing.dataRepresentation()` のバイト列（F-INK-11）。
+    public var backgroundData: Data
+    /// 背景テンプレート（F-INK-12）。
+    public var template: InkTemplate
     /// 手書きキャンバスの表示高さ（ポイント）。
     public var height: Double
 
-    public init(id: UUID = UUID(), drawingData: Data = Data(), height: Double = InkBlock.defaultHeight) {
+    public init(id: UUID = UUID(),
+                drawingData: Data = Data(),
+                backgroundData: Data = Data(),
+                template: InkTemplate = .blank,
+                height: Double = InkBlock.defaultHeight) {
         self.id = id
         self.drawingData = drawingData
+        self.backgroundData = backgroundData
+        self.template = template
         self.height = height
     }
 
     /// 手書きキャンバスの既定の高さ（ポイント）。
     public static let defaultHeight: Double = 280
 
-    /// ストロークが未描画かどうか。
-    public var isEmpty: Bool { drawingData.isEmpty }
+    /// いずれのレイヤーにもストロークが無いか。
+    public var isEmpty: Bool { drawingData.isEmpty && backgroundData.isEmpty }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, drawingData, backgroundData, template, height
+    }
+
+    /// 旧フォーマット（`drawingData` / `height` のみ）のノートもデコードできるよう、
+    /// 後から追加した `backgroundData` / `template` は欠落時に既定値で補う。
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        drawingData = try container.decode(Data.self, forKey: .drawingData)
+        backgroundData = try container.decodeIfPresent(Data.self, forKey: .backgroundData) ?? Data()
+        template = try container.decodeIfPresent(InkTemplate.self, forKey: .template) ?? .blank
+        height = try container.decode(Double.self, forKey: .height)
+    }
 }

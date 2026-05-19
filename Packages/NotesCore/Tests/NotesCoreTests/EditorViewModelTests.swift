@@ -29,6 +29,26 @@ final class EditorViewModelTests: XCTestCase {
     }
 
     @MainActor
+    func testUpdateInkBlockReplacesLayersAndTemplate() async throws {
+        let (editor, repository) = makeEditor()
+        let note = Note(title: "手書き", workspaceID: UUID())
+        try await repository.save(note)
+        await editor.open(note)
+
+        let inkID = editor.addInkBlock()
+        var ink = try XCTUnwrap(editor.inkBlock(id: inkID))
+        ink.drawingData = Data([0x0A])
+        ink.backgroundData = Data([0x0B, 0x0C])
+        ink.template = .grid
+        editor.updateInkBlock(ink)
+
+        let result = try XCTUnwrap(editor.inkBlock(id: inkID))
+        XCTAssertEqual(result.drawingData, Data([0x0A]))
+        XCTAssertEqual(result.backgroundData, Data([0x0B, 0x0C]))
+        XCTAssertEqual(result.template, .grid)
+    }
+
+    @MainActor
     func testInkBlockSurvivesMarkdownRoundTrip() async throws {
         let (editor, repository) = makeEditor()
         let ink = InkBlock(drawingData: Data([0x01, 0x02, 0x03, 0x04]))
