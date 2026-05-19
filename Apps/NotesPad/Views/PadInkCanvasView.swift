@@ -24,7 +24,8 @@ struct PadInkCanvasView: UIViewRepresentable {
             canvas.drawing = drawing
         }
 
-        // ペン・マーカー・消しゴム・色（F-INK-04 / F-INK-05）はツールピッカーで提供する。
+        // ペン・マーカー・消しゴム・色（F-INK-04 / F-INK-05）、および投げ縄選択による
+        // 移動・複製・削除（F-INK-06）はツールピッカーが標準で提供する。
         let toolPicker = context.coordinator.toolPicker
         toolPicker.setVisible(true, forFirstResponder: canvas)
         toolPicker.addObserver(canvas)

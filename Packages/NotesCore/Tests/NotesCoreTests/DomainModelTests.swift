@@ -80,8 +80,34 @@ final class DomainModelTests: XCTestCase {
         XCTAssertEqual(decoded.plainText, "")
     }
 
-    func testInkBlockIsEmptyReflectsDrawingData() {
+    func testInkBlockIsEmptyReflectsBothLayers() {
         XCTAssertTrue(InkBlock().isEmpty)
         XCTAssertFalse(InkBlock(drawingData: Data([0x01])).isEmpty)
+        XCTAssertFalse(InkBlock(backgroundData: Data([0x01])).isEmpty)
+    }
+
+    func testInkBlockRoundTripsLayersAndTemplate() throws {
+        let ink = InkBlock(
+            drawingData: Data([0x01]),
+            backgroundData: Data([0x02, 0x03]),
+            template: .cornell,
+            height: 300
+        )
+        let decoded = try JSONDecoder().decode(InkBlock.self, from: JSONEncoder().encode(ink))
+        XCTAssertEqual(decoded, ink)
+        XCTAssertEqual(decoded.backgroundData, Data([0x02, 0x03]))
+        XCTAssertEqual(decoded.template, .cornell)
+    }
+
+    /// 旧フォーマット（`backgroundData` / `template` を持たない JSON）も既定値で読める。
+    func testInkBlockDecodesLegacyFormat() throws {
+        let id = UUID()
+        let json = "{\"id\":\"\(id.uuidString)\",\"drawingData\":\"AQID\",\"height\":320}"
+        let decoded = try JSONDecoder().decode(InkBlock.self, from: Data(json.utf8))
+        XCTAssertEqual(decoded.id, id)
+        XCTAssertEqual(decoded.drawingData, Data([0x01, 0x02, 0x03]))
+        XCTAssertEqual(decoded.backgroundData, Data())
+        XCTAssertEqual(decoded.template, .blank)
+        XCTAssertEqual(decoded.height, 320)
     }
 }

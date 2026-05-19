@@ -184,13 +184,22 @@ public final class EditorViewModel {
         return ink.id
     }
 
-    /// 指定した手書きブロックの描画データを更新する。
+    /// 指定した手書きブロックの前景レイヤーの描画データを更新する。
     public func updateInkBlock(id: UUID, drawingData: Data) {
         guard let index = blocks.firstIndex(where: { $0.id == id }),
               case .ink(var ink) = blocks[index] else { return }
         ink.drawingData = drawingData
         blocks[index] = .ink(ink)
         inkBlocksByID[ink.id] = ink
+        scheduleAutosave()
+    }
+
+    /// 手書きブロックをレイヤー・テンプレートを含めて丸ごと置き換える（F-INK-11／F-INK-12）。
+    public func updateInkBlock(_ updated: InkBlock) {
+        guard let index = blocks.firstIndex(where: { $0.id == updated.id }),
+              case .ink = blocks[index] else { return }
+        blocks[index] = .ink(updated)
+        inkBlocksByID[updated.id] = updated
         scheduleAutosave()
     }
 
@@ -203,9 +212,10 @@ public final class EditorViewModel {
     }
 
     /// 現在のブロック列から手書きの実データを退避する。
+    /// ストロークが無くてもテンプレート設定だけは Markdown 往復で失わないよう退避する。
     private func captureInkBlocks() {
         for block in blocks {
-            if case .ink(let ink) = block, !ink.isEmpty {
+            if case .ink(let ink) = block, !ink.isEmpty || ink.template != .blank {
                 inkBlocksByID[ink.id] = ink
             }
         }
