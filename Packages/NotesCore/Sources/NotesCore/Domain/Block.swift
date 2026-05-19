@@ -15,8 +15,8 @@ public enum Block: Identifiable, Codable, Hashable, Sendable {
     case checklist(ChecklistBlock)
     case table(TableBlock)
     case image(ImageBlock)
+    case ink(InkBlock)
     // 将来追加予定:
-    // case ink(InkBlock)
     // case pdf(PdfBlock)
     // case shape(ShapeBlock)
     // case textBox(TextBoxBlock)
@@ -32,11 +32,12 @@ public enum Block: Identifiable, Codable, Hashable, Sendable {
         case .checklist(let block): return block.id
         case .table(let block): return block.id
         case .image(let block): return block.id
+        case .ink(let block): return block.id
         }
     }
 
-    /// 本イテレーションで実装済みのブロック種別数。
-    public static let implementedKindCount = 9
+    /// 実装済みのブロック種別数。
+    public static let implementedKindCount = 10
 
     /// 全文検索（F-SEARCH-01）で参照するプレーンテキスト表現。
     public var plainText: String {
@@ -51,6 +52,8 @@ public enum Block: Identifiable, Codable, Hashable, Sendable {
         case .table(let block):
             return (block.headers + block.rows.flatMap { $0 }).joined(separator: " ")
         case .image(let block): return block.caption
+        // 手書きの全文検索（OCR、F-INK-10）は後続イテレーションで対応する。
+        case .ink: return ""
         }
     }
 }
@@ -178,4 +181,30 @@ public struct ImageBlock: Identifiable, Codable, Hashable, Sendable {
         self.attachmentID = attachmentID
         self.caption = caption
     }
+}
+
+/// 手書きブロック（F-INK-13、タイプ済みテキストと手書きの混在配置）。
+///
+/// ストロークは PencilKit の `PKDrawing.dataRepresentation()` をそのまま保持する
+/// （要件定義書 §11.2 の設計判断: v1.0 は Apple エコシステム専用のため
+/// ネイティブ形式を採用し、ロスレス・低実装コストを優先する）。
+/// `NotesCore` は PencilKit に依存せず、`drawingData` を不透明な `Data` として扱う。
+public struct InkBlock: Identifiable, Codable, Hashable, Sendable {
+    public var id: UUID
+    /// `PKDrawing.dataRepresentation()` のバイト列。空の場合は白紙のキャンバス。
+    public var drawingData: Data
+    /// 手書きキャンバスの表示高さ（ポイント）。
+    public var height: Double
+
+    public init(id: UUID = UUID(), drawingData: Data = Data(), height: Double = InkBlock.defaultHeight) {
+        self.id = id
+        self.drawingData = drawingData
+        self.height = height
+    }
+
+    /// 手書きキャンバスの既定の高さ（ポイント）。
+    public static let defaultHeight: Double = 280
+
+    /// ストロークが未描画かどうか。
+    public var isEmpty: Bool { drawingData.isEmpty }
 }

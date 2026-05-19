@@ -42,6 +42,9 @@ public final class EditorViewModel {
     private let tagService: TagService
     private let converter = MarkdownConverter()
     private var autosaveTask: Task<Void, Never>?
+    /// 手書きブロックの実データ。Markdown はストロークを表現できないため、
+    /// Markdown 往復変換でも手書きを失わないよう識別子で保持する。
+    private var inkBlocksByID: [UUID: InkBlock] = [:]
 
     public init(noteService: NoteService, tagService: TagService) {
         self.noteService = noteService
@@ -68,6 +71,8 @@ public final class EditorViewModel {
         isMarkdownMode = false
         markdownText = ""
         saveState = .saved
+        inkBlocksByID = [:]
+        captureInkBlocks()
         availableTags = (try? await tagService.tags(in: note.workspaceID)) ?? []
     }
 
@@ -80,17 +85,19 @@ public final class EditorViewModel {
         markdownText = ""
         tagIDs = []
         availableTags = []
+        inkBlocksByID = [:]
         saveState = .idle
     }
 
     /// Markdown モードとリッチモードを切り替える（F-EDIT-02）。
     public func toggleMarkdownMode() {
         if isMarkdownMode {
-            // Markdown → リッチ: テキストを解析してブロックへ反映。
-            blocks = converter.blocks(from: markdownText)
+            // Markdown → リッチ: テキストを解析し、手書きの実データを復元する。
+            blocks = restoreInkBlocks(in: converter.blocks(from: markdownText))
             isMarkdownMode = false
         } else {
-            // リッチ → Markdown: 現在のブロックをテキスト化。
+            // リッチ → Markdown: 手書きの実データを退避してからテキスト化する。
+            captureInkBlocks()
             markdownText = converter.markdown(from: blocks)
             isMarkdownMode = true
         }
@@ -116,7 +123,7 @@ public final class EditorViewModel {
         saveState = .saving
 
         if isMarkdownMode {
-            blocks = converter.blocks(from: markdownText)
+            blocks = restoreInkBlocks(in: converter.blocks(from: markdownText))
         }
         current.title = title
         current.blocks = blocks
@@ -163,6 +170,54 @@ public final class EditorViewModel {
             scheduleAutosave()
         } catch {
             saveState = .failed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - 手書き操作（F-INK-13）
+
+    /// 空の手書きブロックを末尾に追加し、その識別子を返す。
+    @discardableResult
+    public func addInkBlock() -> UUID {
+        let ink = InkBlock()
+        blocks.append(.ink(ink))
+        scheduleAutosave()
+        return ink.id
+    }
+
+    /// 指定した手書きブロックの描画データを更新する。
+    public func updateInkBlock(id: UUID, drawingData: Data) {
+        guard let index = blocks.firstIndex(where: { $0.id == id }),
+              case .ink(var ink) = blocks[index] else { return }
+        ink.drawingData = drawingData
+        blocks[index] = .ink(ink)
+        inkBlocksByID[ink.id] = ink
+        scheduleAutosave()
+    }
+
+    /// 指定した手書きブロックの現在の内容を返す。
+    public func inkBlock(id: UUID) -> InkBlock? {
+        for block in blocks {
+            if case .ink(let ink) = block, ink.id == id { return ink }
+        }
+        return nil
+    }
+
+    /// 現在のブロック列から手書きの実データを退避する。
+    private func captureInkBlocks() {
+        for block in blocks {
+            if case .ink(let ink) = block, !ink.isEmpty {
+                inkBlocksByID[ink.id] = ink
+            }
+        }
+    }
+
+    /// Markdown 解析で生じた空の手書きプレースホルダを、退避済みの実データで復元する。
+    private func restoreInkBlocks(in parsed: [Block]) -> [Block] {
+        parsed.map { block in
+            if case .ink(let ink) = block, ink.isEmpty, let stored = inkBlocksByID[ink.id] {
+                return .ink(stored)
+            }
+            return block
         }
     }
 

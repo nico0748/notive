@@ -1,12 +1,15 @@
 import NotesCore
+import PencilKit
 import SwiftUI
+import UIKit
 
-/// ノート本文（ブロック配列）を読み取り専用で描画する（iPadOS のプレビュー表示）。
+/// ノート本文（ブロック配列）を描画する（iPadOS のプレビュー表示）。
 ///
-/// iPadOS 版の本イテレーションでは編集を Markdown テキストで行うため、
-/// リッチ表示はプレビュー専用とする。
+/// テキスト系ブロックは読み取り専用、手書きブロックはタップで編集シートを開く。
 struct PadBlockRenderer: View {
     let blocks: [Block]
+    /// 手書きブロックがタップされたときに、その識別子を通知する。
+    var onTapInk: (UUID) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -71,7 +74,42 @@ struct PadBlockRenderer: View {
         case .image(let image):
             Label(image.caption.isEmpty ? "画像" : image.caption, systemImage: "photo")
                 .foregroundStyle(.secondary)
+        case .ink(let ink):
+            inkView(ink)
         }
+    }
+
+    private func inkView(_ ink: InkBlock) -> some View {
+        Button {
+            onTapInk(ink.id)
+        } label: {
+            Group {
+                if let image = Self.renderedImage(for: ink) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                } else {
+                    HStack(spacing: 6) {
+                        Image(systemName: "scribble.variable")
+                        Text("手書き（タップして描く）")
+                    }
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 80)
+                }
+            }
+            .padding(8)
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// 手書きブロックの描画を画像へレンダリングする。未描画なら `nil`。
+    static func renderedImage(for ink: InkBlock) -> UIImage? {
+        guard !ink.isEmpty, let drawing = try? PKDrawing(data: ink.drawingData) else { return nil }
+        let bounds = drawing.bounds
+        guard !bounds.isEmpty, bounds.width.isFinite, bounds.height.isFinite else { return nil }
+        return drawing.image(from: bounds, scale: 2.0)
     }
 
     private func tableView(_ table: TableBlock) -> some View {

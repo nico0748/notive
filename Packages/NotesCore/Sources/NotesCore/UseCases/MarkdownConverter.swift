@@ -39,8 +39,15 @@ public struct MarkdownConverter {
         case .image(let image):
             let reference = image.attachmentID.map { "attachment:\($0.uuidString)" } ?? ""
             return "![\(image.caption)](\(reference))"
+        case .ink(let ink):
+            // 手書きストロークは Markdown では表現できないため、識別子のみを
+            // プレースホルダとして残す。実データの保持は EditorViewModel が担う。
+            return "\(Self.inkMarkerPrefix)\(ink.id.uuidString) -->"
         }
     }
+
+    /// 手書きブロックを Markdown 内で表すコメントマーカーの接頭辞。
+    static let inkMarkerPrefix = "<!-- notive-ink:"
 
     private func markdown(from table: TableBlock) -> String {
         let headerLine = "| " + table.headers.joined(separator: " | ") + " |"
@@ -69,6 +76,9 @@ public struct MarkdownConverter {
                 index = next
             } else if let heading = parseHeading(trimmed) {
                 blocks.append(.heading(heading))
+                index += 1
+            } else if trimmed.hasPrefix(Self.inkMarkerPrefix) {
+                blocks.append(.ink(parseInk(trimmed)))
                 index += 1
             } else if trimmed.hasPrefix("![") {
                 blocks.append(.image(parseImage(trimmed)))
@@ -149,6 +159,16 @@ public struct MarkdownConverter {
             }
         }
         return ImageBlock(attachmentID: attachmentID, caption: caption)
+    }
+
+    /// `<!-- notive-ink:UUID -->` を識別子のみのプレースホルダ手書きブロックへ変換する。
+    private func parseInk(_ trimmed: String) -> InkBlock {
+        var content = String(trimmed.dropFirst(Self.inkMarkerPrefix.count))
+        if let range = content.range(of: "-->") {
+            content = String(content[content.startIndex..<range.lowerBound])
+        }
+        let identifier = UUID(uuidString: content.trimmingCharacters(in: .whitespaces)) ?? UUID()
+        return InkBlock(id: identifier)
     }
 
     private func isChecklistLine(_ trimmed: String) -> Bool {
@@ -268,6 +288,7 @@ public struct MarkdownConverter {
                 || trimmed.hasPrefix("* ")
                 || trimmed.hasPrefix("|")
                 || trimmed.hasPrefix("![")
+                || trimmed.hasPrefix(Self.inkMarkerPrefix)
                 || numberedListContent(of: trimmed) != nil {
                 break
             }

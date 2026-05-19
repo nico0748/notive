@@ -57,6 +57,8 @@ struct BlockEditorRow: View {
             if let binding = $block.tableBinding { TableBlockEditor(block: binding) }
         case .image:
             if let binding = $block.imageBinding { ImageBlockEditor(block: binding) }
+        case .ink(let ink):
+            InkPlaceholderView(ink: ink)
         }
     }
 
@@ -73,5 +75,29 @@ struct BlockEditorRow: View {
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .fixedSize()
+    }
+}
+
+/// 手書きブロックの macOS 向けプレースホルダ表示。
+///
+/// 手書きの作成・編集は iPad（Apple Pencil）で行う。macOS のトラックパッド描画
+/// （F-INK-15）は後続イテレーションで対応するため、ここでは存在のみを示す。
+struct InkPlaceholderView: View {
+    let ink: InkBlock
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "scribble.variable")
+                .foregroundStyle(.tint)
+            Text(ink.isEmpty ? "手書きブロック（未描画）" : "手書きブロック")
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text("iPad で編集")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
     }
 }
