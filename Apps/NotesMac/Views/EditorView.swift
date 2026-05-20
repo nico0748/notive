@@ -9,6 +9,7 @@ struct EditorView: View {
     @State private var isCreatingTag = false
     @State private var newTagName = ""
     @State private var isImportingPdf = false
+    @State private var isShowingVersionHistory = false
 
     var body: some View {
         Group {
@@ -36,6 +37,9 @@ struct EditorView: View {
             if case .success(let url) = result, let block = PdfImport.makeBlock(from: url) {
                 editor.appendPdfBlock(block)
             }
+        }
+        .sheet(isPresented: $isShowingVersionHistory) {
+            VersionHistoryView(editor: editor)
         }
     }
 
@@ -121,6 +125,14 @@ struct EditorView: View {
                     )
                 }
                 .help("Markdown 入力とリッチ表示を切り替えます")
+            }
+            ToolbarItem {
+                Button {
+                    isShowingVersionHistory = true
+                } label: {
+                    Label("履歴", systemImage: "clock.arrow.circlepath")
+                }
+                .help("バージョン履歴を表示・復元します")
             }
             if !editor.isMarkdownMode {
                 ToolbarItem {

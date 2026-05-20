@@ -191,6 +191,74 @@ public final class SwiftDataNoteRepository: NoteRepository {
     }
 }
 
+/// `NoteVersionRepository` の SwiftData 実装（F-EDIT-08）。
+@MainActor
+public final class SwiftDataNoteVersionRepository: NoteVersionRepository {
+    private let context: ModelContext
+
+    public init(context: ModelContext) {
+        self.context = context
+    }
+
+    public func versions(noteID: UUID) async throws -> [NoteVersion] {
+        let descriptor = FetchDescriptor<NoteVersionEntity>(
+            predicate: #Predicate { $0.noteID == noteID },
+            sortBy: [SortDescriptor(\.capturedAt, order: .reverse)]
+        )
+        return try fetch(descriptor).map { try EntityMapping.makeDomain($0) }
+    }
+
+    public func save(_ version: NoteVersion) async throws {
+        // バージョンは追加・置換のみで、部分更新は行わない。
+        let id = version.id
+        if let existing = try fetch(FetchDescriptor<NoteVersionEntity>(predicate: #Predicate { $0.id == id })).first {
+            context.delete(existing)
+        }
+        context.insert(try EntityMapping.makeEntity(version))
+        try persist()
+    }
+
+    public func delete(id: UUID) async throws {
+        guard let entity = try fetch(FetchDescriptor<NoteVersionEntity>(predicate: #Predicate { $0.id == id })).first else {
+            throw RepositoryError.notFound(id: id)
+        }
+        context.delete(entity)
+        try persist()
+    }
+
+    public func deleteAll(noteID: UUID) async throws {
+        let descriptor = FetchDescriptor<NoteVersionEntity>(
+            predicate: #Predicate { $0.noteID == noteID }
+        )
+        for entity in try fetch(descriptor) {
+            context.delete(entity)
+        }
+        try persist()
+    }
+
+    public func purgeExpired(before cutoff: Date) async throws {
+        let descriptor = FetchDescriptor<NoteVersionEntity>(
+            predicate: #Predicate { $0.capturedAt < cutoff }
+        )
+        for entity in try fetch(descriptor) {
+            context.delete(entity)
+        }
+        try persist()
+    }
+
+    private func fetch<T: PersistentModel>(_ descriptor: FetchDescriptor<T>) throws -> [T] {
+        do { return try context.fetch(descriptor) } catch {
+            throw RepositoryError.storageFailure(error.localizedDescription)
+        }
+    }
+
+    private func persist() throws {
+        do { try context.save() } catch {
+            throw RepositoryError.storageFailure(error.localizedDescription)
+        }
+    }
+}
+
 /// `TagRepository` の SwiftData 実装。
 @MainActor
 public final class SwiftDataTagRepository: TagRepository {

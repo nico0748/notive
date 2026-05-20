@@ -14,6 +14,18 @@ final class EditorViewModelTests: XCTestCase {
     }
 
     @MainActor
+    private func makeEditorWithVersioning() -> (EditorViewModel, FakeNoteRepository, FakeNoteVersionRepository) {
+        let noteRepository = FakeNoteRepository()
+        let versionRepository = FakeNoteVersionRepository()
+        let editor = EditorViewModel(
+            noteService: NoteService(repository: noteRepository),
+            tagService: TagService(repository: FakeTagRepository()),
+            versionService: NoteVersionService(repository: versionRepository)
+        )
+        return (editor, noteRepository, versionRepository)
+    }
+
+    @MainActor
     func testAddAndUpdateInkBlock() async throws {
         let (editor, repository) = makeEditor()
         let note = Note(title: "手書き", workspaceID: UUID())
@@ -93,6 +105,51 @@ final class EditorViewModelTests: XCTestCase {
         editor.appendPdfBlock(pdf)
         XCTAssertEqual(editor.pdfBlock(id: pdf.id)?.caption, "資料")
         XCTAssertEqual(editor.pdfBlock(id: pdf.id)?.pageCount, 1)
+    }
+
+    @MainActor
+    func testSaveNowRecordsVersion() async throws {
+        let (editor, repository, versionRepository) = makeEditorWithVersioning()
+        let note = Note(title: "履歴対象", workspaceID: UUID())
+        try await repository.save(note)
+        await editor.open(note)
+
+        editor.title = "履歴対象（編集）"
+        await editor.saveNow()
+
+        XCTAssertEqual(versionRepository.storage.count, 1)
+        let saved = versionRepository.storage.values.first
+        XCTAssertEqual(saved?.title, "履歴対象（編集）")
+        XCTAssertEqual(saved?.noteID, note.id)
+    }
+
+    @MainActor
+    func testRestoreAppliesVersionContent() async throws {
+        let (editor, repository, versionRepository) = makeEditorWithVersioning()
+        let note = Note(title: "初期", workspaceID: UUID())
+        try await repository.save(note)
+        await editor.open(note)
+
+        // 履歴 1（過去の状態）。
+        let snapshot = NoteVersion(
+            noteID: note.id,
+            capturedAt: .now.addingTimeInterval(-120),
+            title: "過去のタイトル",
+            blocks: [.paragraph(ParagraphBlock(text: "過去本文"))]
+        )
+        try await versionRepository.save(snapshot)
+
+        // 現在の編集状態を別の内容に変える。
+        editor.title = "現在のタイトル"
+        editor.blocks = [.paragraph(ParagraphBlock(text: "現在本文"))]
+        await editor.saveNow()
+
+        await editor.restore(version: snapshot)
+
+        XCTAssertEqual(editor.title, "過去のタイトル")
+        XCTAssertEqual(editor.blocks.count, 1)
+        let saved = try await repository.note(id: note.id)
+        XCTAssertEqual(saved?.title, "過去のタイトル")
     }
 
     @MainActor

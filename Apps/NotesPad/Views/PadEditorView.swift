@@ -14,6 +14,7 @@ struct PadEditorView: View {
     @State private var newTagName = ""
     @State private var inkEditTarget: InkEditTarget?
     @State private var isImportingPdf = false
+    @State private var isShowingVersionHistory = false
 
     /// 手書き編集シートの対象。`.sheet(item:)` で扱うため `Identifiable` でラップする。
     private struct InkEditTarget: Identifiable {
@@ -49,6 +50,9 @@ struct PadEditorView: View {
             if case .success(let url) = result, let block = PdfImport.makeBlock(from: url) {
                 editor.appendPdfBlock(block)
             }
+        }
+        .sheet(isPresented: $isShowingVersionHistory) {
+            PadVersionHistoryView(editor: editor)
         }
     }
 
@@ -148,6 +152,13 @@ struct PadEditorView: View {
                         editor.isMarkdownMode ? "プレビュー" : "編集",
                         systemImage: editor.isMarkdownMode ? "eye" : "pencil"
                     )
+                }
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    isShowingVersionHistory = true
+                } label: {
+                    Label("履歴", systemImage: "clock.arrow.circlepath")
                 }
             }
         }

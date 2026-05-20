@@ -188,6 +188,30 @@ enum EntityMapping {
         entity.sortIndex = note.sortIndex
     }
 
+    // MARK: - NoteVersion
+
+    static func makeDomain(_ entity: NoteVersionEntity) throws -> NoteVersion {
+        NoteVersion(
+            id: entity.id,
+            noteID: entity.noteID,
+            capturedAt: entity.capturedAt,
+            title: entity.title,
+            blocks: try decodeBlocks(entity.bodyData),
+            tagIDs: try decodeIDs(entity.tagIDsData)
+        )
+    }
+
+    static func makeEntity(_ version: NoteVersion) throws -> NoteVersionEntity {
+        NoteVersionEntity(
+            id: version.id,
+            noteID: version.noteID,
+            capturedAt: version.capturedAt,
+            title: version.title,
+            bodyData: try encodeBlocks(version.blocks),
+            tagIDsData: try encodeIDs(version.tagIDs)
+        )
+    }
+
     // MARK: - Tag
 
     static func makeDomain(_ entity: TagEntity) -> Tag {

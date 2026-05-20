@@ -17,7 +17,8 @@ struct MainView: View {
         ))
         _editor = State(initialValue: EditorViewModel(
             noteService: appModel.noteService,
-            tagService: appModel.tagService
+            tagService: appModel.tagService,
+            versionService: appModel.versionService
         ))
     }
 

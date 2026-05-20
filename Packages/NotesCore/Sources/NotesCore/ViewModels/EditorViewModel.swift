@@ -40,6 +40,7 @@ public final class EditorViewModel {
 
     private let noteService: NoteService
     private let tagService: TagService
+    private let versionService: NoteVersionService?
     private let converter = MarkdownConverter()
     private var autosaveTask: Task<Void, Never>?
     /// 手書きブロックの実データ。Markdown はストロークを表現できないため、
@@ -49,9 +50,14 @@ public final class EditorViewModel {
     /// 手書きと同様に識別子で保持して往復変換での消失を防ぐ。
     private var pdfBlocksByID: [UUID: PdfBlock] = [:]
 
-    public init(noteService: NoteService, tagService: TagService) {
+    public init(
+        noteService: NoteService,
+        tagService: TagService,
+        versionService: NoteVersionService? = nil
+    ) {
         self.noteService = noteService
         self.tagService = tagService
+        self.versionService = versionService
     }
 
     /// 編集対象のノートに付与されたタグを、ワークスペース内での表示順で返す。
@@ -138,6 +144,34 @@ public final class EditorViewModel {
             let saved = try await noteService.save(current)
             note = saved
             saveState = .saved
+            // バージョン履歴を記録（F-EDIT-08）。失敗してもアプリの編集は継続する。
+            try? await versionService?.recordVersion(of: saved)
+        } catch {
+            saveState = .failed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - バージョン履歴（F-EDIT-08）
+
+    /// 編集中ノートのバージョン履歴を新しい順で返す。
+    public func versions() async throws -> [NoteVersion] {
+        guard let noteID = note?.id, let service = versionService else { return [] }
+        return try await service.versions(of: noteID)
+    }
+
+    /// 指定バージョンの内容を編集中ノートへ適用し、保存する。
+    public func restore(version: NoteVersion) async {
+        guard var current = note, version.noteID == current.id else { return }
+        await flushPendingSave()
+        saveState = .saving
+        current.title = version.title
+        current.blocks = version.blocks
+        current.tagIDs = version.tagIDs
+        do {
+            let saved = try await noteService.save(current)
+            // 復元自体も新たな版として残す（F-EDIT-08）。
+            try? await versionService?.recordVersion(of: saved)
+            await open(saved)
         } catch {
             saveState = .failed(error.localizedDescription)
         }

@@ -15,6 +15,15 @@ public enum NotesConstants {
         public static let retentionDays: Int = 30
     }
 
+    /// バージョン履歴（F-EDIT-08）に関する設定。
+    public enum VersionHistory {
+        /// バージョンを保持する日数。経過後は自動削除の対象となる。
+        public static let retentionDays: Int = 30
+        /// 同一ノートで連続する保存をひとつにまとめる時間窓（秒）。
+        /// この窓内に内容が変化した場合は、直前のスナップショットを上書きする。
+        public static let throttle: TimeInterval = 60
+    }
+
     /// 見出しブロックで許容するレベルの範囲（H1〜H3）。
     public enum Heading {
         public static let minLevel: Int = 1

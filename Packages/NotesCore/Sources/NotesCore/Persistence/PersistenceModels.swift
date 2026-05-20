@@ -112,6 +112,27 @@ final class NoteEntity {
 }
 
 @Model
+final class NoteVersionEntity {
+    var id: UUID
+    var noteID: UUID
+    var capturedAt: Date
+    var title: String
+    /// `[Block]` を JSON エンコードしたデータ。
+    var bodyData: Data
+    /// `[UUID]`（タグ識別子）を JSON エンコードしたデータ。
+    var tagIDsData: Data
+
+    init(id: UUID, noteID: UUID, capturedAt: Date, title: String, bodyData: Data, tagIDsData: Data) {
+        self.id = id
+        self.noteID = noteID
+        self.capturedAt = capturedAt
+        self.title = title
+        self.bodyData = bodyData
+        self.tagIDsData = tagIDsData
+    }
+}
+
+@Model
 final class TagEntity {
     var id: UUID
     var name: String
