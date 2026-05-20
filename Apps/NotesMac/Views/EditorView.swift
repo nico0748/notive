@@ -1,5 +1,6 @@
 import NotesCore
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// 右ペインのノートエディタ（F-EDIT-01〜07、F-ORG-03 タグ付与）。
 struct EditorView: View {
@@ -7,6 +8,7 @@ struct EditorView: View {
 
     @State private var isCreatingTag = false
     @State private var newTagName = ""
+    @State private var isImportingPdf = false
 
     var body: some View {
         Group {
@@ -29,6 +31,11 @@ struct EditorView: View {
                 Task { await editor.createAndAssignTag(named: name) }
             }
             Button("キャンセル", role: .cancel) { newTagName = "" }
+        }
+        .fileImporter(isPresented: $isImportingPdf, allowedContentTypes: [.pdf]) { result in
+            if case .success(let url) = result, let block = PdfImport.makeBlock(from: url) {
+                editor.appendPdfBlock(block)
+            }
         }
     }
 
@@ -133,6 +140,8 @@ struct EditorView: View {
             Button("コードブロック") { editor.appendBlock(.code(CodeBlock())) }
             Button("チェックリスト") { editor.appendBlock(.checklist(ChecklistBlock())) }
             Button("テーブル") { editor.appendBlock(.table(TableBlock.makeDefault())) }
+            Divider()
+            Button("PDF を読み込み…") { isImportingPdf = true }
         } label: {
             Label("ブロックを追加", systemImage: "plus")
         }

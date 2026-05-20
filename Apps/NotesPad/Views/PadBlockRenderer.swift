@@ -76,6 +76,8 @@ struct PadBlockRenderer: View {
                 .foregroundStyle(.secondary)
         case .ink(let ink):
             inkView(ink)
+        case .pdf(let pdf):
+            PadPdfCard(pdf: pdf)
         }
     }
 

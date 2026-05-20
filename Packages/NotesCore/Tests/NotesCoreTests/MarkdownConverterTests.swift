@@ -106,6 +106,20 @@ final class MarkdownConverterTests: XCTestCase {
         XCTAssertTrue(ink.isEmpty)
     }
 
+    func testPdfBlockRoundTripsViaMarker() {
+        let identifier = UUID()
+        let markdown = converter.markdown(from: [.pdf(PdfBlock(id: identifier, documentData: Data([1, 2])))])
+        XCTAssertTrue(markdown.contains("notive-pdf:\(identifier.uuidString)"))
+
+        let restored = converter.blocks(from: markdown)
+        guard case .pdf(let pdf) = restored.first else {
+            return XCTFail("PDF ブロックが復元されていない")
+        }
+        XCTAssertEqual(pdf.id, identifier)
+        // Markdown は PDF の実データを保持しないため、復元時は空になる。
+        XCTAssertTrue(pdf.isEmpty)
+    }
+
     private func blockKind(_ block: Block) -> String {
         switch block {
         case .heading: return "heading"
@@ -118,6 +132,7 @@ final class MarkdownConverterTests: XCTestCase {
         case .table: return "table"
         case .image: return "image"
         case .ink: return "ink"
+        case .pdf: return "pdf"
         }
     }
 }

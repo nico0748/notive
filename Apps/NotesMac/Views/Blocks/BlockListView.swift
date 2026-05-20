@@ -59,6 +59,8 @@ struct BlockEditorRow: View {
             if let binding = $block.imageBinding { ImageBlockEditor(block: binding) }
         case .ink(let ink):
             InkPlaceholderView(ink: ink)
+        case .pdf(let pdf):
+            MacPdfCard(pdf: pdf)
         }
     }
 
