@@ -13,8 +13,15 @@ final class EditorViewModelTests: XCTestCase {
         return (editor, noteRepository)
     }
 
+    /// バージョン履歴サービスを含む `EditorViewModel` 構築ハーネス。
+    private struct VersioningHarness {
+        let editor: EditorViewModel
+        let noteRepository: FakeNoteRepository
+        let versionRepository: FakeNoteVersionRepository
+    }
+
     @MainActor
-    private func makeEditorWithVersioning() -> (EditorViewModel, FakeNoteRepository, FakeNoteVersionRepository) {
+    private func makeEditorWithVersioning() -> VersioningHarness {
         let noteRepository = FakeNoteRepository()
         let versionRepository = FakeNoteVersionRepository()
         let editor = EditorViewModel(
@@ -22,7 +29,11 @@ final class EditorViewModelTests: XCTestCase {
             tagService: TagService(repository: FakeTagRepository()),
             versionService: NoteVersionService(repository: versionRepository)
         )
-        return (editor, noteRepository, versionRepository)
+        return VersioningHarness(
+            editor: editor,
+            noteRepository: noteRepository,
+            versionRepository: versionRepository
+        )
     }
 
     @MainActor
@@ -109,26 +120,26 @@ final class EditorViewModelTests: XCTestCase {
 
     @MainActor
     func testSaveNowRecordsVersion() async throws {
-        let (editor, repository, versionRepository) = makeEditorWithVersioning()
+        let harness = makeEditorWithVersioning()
         let note = Note(title: "履歴対象", workspaceID: UUID())
-        try await repository.save(note)
-        await editor.open(note)
+        try await harness.noteRepository.save(note)
+        await harness.editor.open(note)
 
-        editor.title = "履歴対象（編集）"
-        await editor.saveNow()
+        harness.editor.title = "履歴対象（編集）"
+        await harness.editor.saveNow()
 
-        XCTAssertEqual(versionRepository.storage.count, 1)
-        let saved = versionRepository.storage.values.first
+        XCTAssertEqual(harness.versionRepository.storage.count, 1)
+        let saved = harness.versionRepository.storage.values.first
         XCTAssertEqual(saved?.title, "履歴対象（編集）")
         XCTAssertEqual(saved?.noteID, note.id)
     }
 
     @MainActor
     func testRestoreAppliesVersionContent() async throws {
-        let (editor, repository, versionRepository) = makeEditorWithVersioning()
+        let harness = makeEditorWithVersioning()
         let note = Note(title: "初期", workspaceID: UUID())
-        try await repository.save(note)
-        await editor.open(note)
+        try await harness.noteRepository.save(note)
+        await harness.editor.open(note)
 
         // 履歴 1（過去の状態）。
         let snapshot = NoteVersion(
@@ -137,18 +148,18 @@ final class EditorViewModelTests: XCTestCase {
             title: "過去のタイトル",
             blocks: [.paragraph(ParagraphBlock(text: "過去本文"))]
         )
-        try await versionRepository.save(snapshot)
+        try await harness.versionRepository.save(snapshot)
 
         // 現在の編集状態を別の内容に変える。
-        editor.title = "現在のタイトル"
-        editor.blocks = [.paragraph(ParagraphBlock(text: "現在本文"))]
-        await editor.saveNow()
+        harness.editor.title = "現在のタイトル"
+        harness.editor.blocks = [.paragraph(ParagraphBlock(text: "現在本文"))]
+        await harness.editor.saveNow()
 
-        await editor.restore(version: snapshot)
+        await harness.editor.restore(version: snapshot)
 
-        XCTAssertEqual(editor.title, "過去のタイトル")
-        XCTAssertEqual(editor.blocks.count, 1)
-        let saved = try await repository.note(id: note.id)
+        XCTAssertEqual(harness.editor.title, "過去のタイトル")
+        XCTAssertEqual(harness.editor.blocks.count, 1)
+        let saved = try await harness.noteRepository.note(id: note.id)
         XCTAssertEqual(saved?.title, "過去のタイトル")
     }
 

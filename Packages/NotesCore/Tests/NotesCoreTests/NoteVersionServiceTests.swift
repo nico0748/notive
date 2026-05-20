@@ -40,11 +40,11 @@ final class NoteVersionServiceTests: XCTestCase {
         let (service, _) = makeService()
         var note = Note(title: "メモ", workspaceID: UUID())
 
-        _ = try await service.recordVersion(of: note, now: Date(timeIntervalSince1970: 0))
+        try await service.recordVersion(of: note, now: Date(timeIntervalSince1970: 0))
 
         note.title = "メモ（更新）"
         // スロットル時間以内に内容が変化 → 直近の版を上書き。
-        _ = try await service.recordVersion(
+        try await service.recordVersion(
             of: note,
             now: Date(timeIntervalSince1970: NotesConstants.VersionHistory.throttle / 2)
         )
@@ -58,10 +58,10 @@ final class NoteVersionServiceTests: XCTestCase {
         let (service, _) = makeService()
         var note = Note(title: "メモ", workspaceID: UUID())
 
-        _ = try await service.recordVersion(of: note, now: Date(timeIntervalSince1970: 0))
+        try await service.recordVersion(of: note, now: Date(timeIntervalSince1970: 0))
 
         note.title = "メモ（更新）"
-        _ = try await service.recordVersion(
+        try await service.recordVersion(
             of: note,
             now: Date(timeIntervalSince1970: NotesConstants.VersionHistory.throttle * 2)
         )
