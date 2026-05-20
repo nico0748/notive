@@ -98,12 +98,12 @@ final class FakeNoteVersionRepository: NoteVersionRepository {
     }
 
     func deleteAll(noteID: UUID) async throws {
-        let keys = storage.compactMap { key, value in value.noteID == noteID ? key : nil }
+        let keys = storage.filter { $0.value.noteID == noteID }.map(\.key)
         for key in keys { storage.removeValue(forKey: key) }
     }
 
     func purgeExpired(before cutoff: Date) async throws {
-        let keys = storage.compactMap { key, value in value.capturedAt < cutoff ? key : nil }
+        let keys = storage.filter { $0.value.capturedAt < cutoff }.map(\.key)
         for key in keys { storage.removeValue(forKey: key) }
     }
 }
