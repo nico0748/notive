@@ -98,13 +98,23 @@ final class FakeNoteVersionRepository: NoteVersionRepository {
     }
 
     func deleteAll(noteID: UUID) async throws {
-        let keys = storage.filter { $0.value.noteID == noteID }.map(\.key)
-        for key in keys { storage.removeValue(forKey: key) }
+        var keysToDelete: [UUID] = []
+        for (key, value) in storage where value.noteID == noteID {
+            keysToDelete.append(key)
+        }
+        for key in keysToDelete {
+            storage.removeValue(forKey: key)
+        }
     }
 
     func purgeExpired(before cutoff: Date) async throws {
-        let keys = storage.filter { $0.value.capturedAt < cutoff }.map(\.key)
-        for key in keys { storage.removeValue(forKey: key) }
+        var keysToDelete: [UUID] = []
+        for (key, value) in storage where value.capturedAt < cutoff {
+            keysToDelete.append(key)
+        }
+        for key in keysToDelete {
+            storage.removeValue(forKey: key)
+        }
     }
 }
 
