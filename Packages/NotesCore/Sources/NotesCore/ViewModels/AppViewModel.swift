@@ -30,6 +30,7 @@ public final class AppViewModel {
     public let folderService: FolderService
     public let searchService: SearchService
     public let tagService: TagService
+    public let versionService: NoteVersionService
     private let workspaceService: WorkspaceService
 
     public init(
@@ -37,12 +38,14 @@ public final class AppViewModel {
         folderService: FolderService,
         searchService: SearchService,
         tagService: TagService,
+        versionService: NoteVersionService,
         workspaceService: WorkspaceService
     ) {
         self.noteService = noteService
         self.folderService = folderService
         self.searchService = searchService
         self.tagService = tagService
+        self.versionService = versionService
         self.workspaceService = workspaceService
     }
 
@@ -53,7 +56,7 @@ public final class AppViewModel {
                 currentUser = user
                 currentWorkspace = try await workspaceService.personalWorkspace(for: user)
                 phase = .ready
-                await purgeExpiredTrash()
+                await runStartupMaintenance()
             } else {
                 phase = .login
             }
@@ -70,18 +73,26 @@ public final class AppViewModel {
             currentUser = result.user
             currentWorkspace = result.workspace
             phase = .ready
-            await purgeExpiredTrash()
+            await runStartupMaintenance()
         } catch {
             errorMessage = "ローカルユーザーの作成に失敗しました: \(error.localizedDescription)"
         }
     }
 
+    /// 起動時のメンテナンスを実行する。失敗しても致命的とはみなさず、次回起動時に再試行する。
+    private func runStartupMaintenance() async {
+        await purgeExpiredTrash()
+        await purgeExpiredVersions()
+    }
+
     /// 保持期間を過ぎたゴミ箱内ノートを削除する（F-ORG-05、30日保持）。
-    ///
-    /// 起動処理の一部として実行する。失敗してもアプリの利用は継続できるため、
-    /// エラーは致命的とはみなさず次回起動時に再試行する。
     private func purgeExpiredTrash() async {
         guard let workspace = currentWorkspace else { return }
         try? await noteService.purgeExpiredTrash(in: workspace.id)
+    }
+
+    /// 保持期間を過ぎたバージョン履歴を削除する（F-EDIT-08、30日保持）。
+    private func purgeExpiredVersions() async {
+        try? await versionService.purgeExpired()
     }
 }

@@ -131,4 +131,35 @@ final class SwiftDataRepositoryTests: XCTestCase {
         let fetched = try await repository.allWorkspaces().first
         XCTAssertEqual(fetched?.kind, .personal)
     }
+
+    @MainActor
+    func testNoteVersionRepositoryRoundTripAndPurge() async throws {
+        try skipIfHeadlessCI()
+        let repository = SwiftDataNoteVersionRepository(context: try makeContext())
+        let noteID = UUID()
+
+        let recent = NoteVersion(
+            noteID: noteID,
+            capturedAt: .now,
+            title: "最新",
+            blocks: [.paragraph(ParagraphBlock(text: "本文"))]
+        )
+        let old = NoteVersion(
+            noteID: noteID,
+            capturedAt: .now.addingTimeInterval(-31 * 24 * 60 * 60),
+            title: "古い",
+            blocks: []
+        )
+        try await repository.save(recent)
+        try await repository.save(old)
+
+        let versions = try await repository.versions(noteID: noteID)
+        XCTAssertEqual(versions.count, 2)
+        XCTAssertEqual(versions.first?.id, recent.id, "新しい順で並ぶ")
+
+        try await repository.purgeExpired(before: .now.addingTimeInterval(-30 * 24 * 60 * 60))
+        let remaining = try await repository.versions(noteID: noteID)
+        XCTAssertEqual(remaining.count, 1)
+        XCTAssertEqual(remaining.first?.id, recent.id)
+    }
 }

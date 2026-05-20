@@ -14,7 +14,8 @@ public enum ModelContainerFactory {
             WorkspaceEntity.self,
             FolderEntity.self,
             NoteEntity.self,
-            TagEntity.self
+            TagEntity.self,
+            NoteVersionEntity.self
         ]
     }
 

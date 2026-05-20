@@ -79,6 +79,45 @@ final class FakeNoteRepository: NoteRepository {
     }
 }
 
+final class FakeNoteVersionRepository: NoteVersionRepository {
+    var storage: [UUID: NoteVersion] = [:]
+
+    func versions(noteID: UUID) async throws -> [NoteVersion] {
+        storage.values
+            .filter { $0.noteID == noteID }
+            .sorted { $0.capturedAt > $1.capturedAt }
+    }
+
+    func save(_ version: NoteVersion) async throws {
+        storage[version.id] = version
+    }
+
+    func delete(id: UUID) async throws {
+        guard storage[id] != nil else { throw RepositoryError.notFound(id: id) }
+        storage.removeValue(forKey: id)
+    }
+
+    func deleteAll(noteID: UUID) async throws {
+        var keysToDelete: [UUID] = []
+        for (key, value) in storage where value.noteID == noteID {
+            keysToDelete.append(key)
+        }
+        for key in keysToDelete {
+            storage.removeValue(forKey: key)
+        }
+    }
+
+    func purgeExpired(before cutoff: Date) async throws {
+        var keysToDelete: [UUID] = []
+        for (key, value) in storage where value.capturedAt < cutoff {
+            keysToDelete.append(key)
+        }
+        for key in keysToDelete {
+            storage.removeValue(forKey: key)
+        }
+    }
+}
+
 final class FakeTagRepository: TagRepository {
     var storage: [UUID: Tag] = [:]
 

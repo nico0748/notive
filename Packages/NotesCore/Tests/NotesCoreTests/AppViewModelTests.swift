@@ -18,12 +18,14 @@ final class AppViewModelTests: XCTestCase {
         let noteRepository = FakeNoteRepository()
         let folderRepository = FakeFolderRepository()
         let tagRepository = FakeTagRepository()
+        let versionRepository = FakeNoteVersionRepository()
 
         let appModel = AppViewModel(
             noteService: NoteService(repository: noteRepository),
             folderService: FolderService(folderRepository: folderRepository, noteRepository: noteRepository),
             searchService: SearchService(repository: noteRepository),
             tagService: TagService(repository: tagRepository),
+            versionService: NoteVersionService(repository: versionRepository),
             workspaceService: WorkspaceService(
                 userRepository: userRepository,
                 workspaceRepository: workspaceRepository

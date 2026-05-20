@@ -47,3 +47,17 @@ public protocol TagRepository {
     func save(_ tag: Tag) async throws
     func delete(id: UUID) async throws
 }
+
+/// ノートのバージョン履歴（F-EDIT-08）の永続化を抽象化するリポジトリ。
+public protocol NoteVersionRepository {
+    /// 指定ノートのバージョンを新しい順に返す。
+    func versions(noteID: UUID) async throws -> [NoteVersion]
+    /// バージョンを保存する。既存 ID と一致する場合は置き換える。
+    func save(_ version: NoteVersion) async throws
+    /// 指定識別子のバージョンを削除する。
+    func delete(id: UUID) async throws
+    /// 指定ノートのすべてのバージョンを削除する。
+    func deleteAll(noteID: UUID) async throws
+    /// 指定時刻より前に記録されたバージョンをすべて削除する（保持期間超過分の自動削除）。
+    func purgeExpired(before cutoff: Date) async throws
+}
